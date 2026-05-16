@@ -1,0 +1,363 @@
+"use client";
+
+import { useState, useRef } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { createDiary, uploadPhoto, generateDraft, generateQuestions, finalizeDiary, updateDiaryContent } from "@/lib/api";
+import { useToast } from "@/components/Toast";
+
+type Step = "upload" | "memo" | "draft" | "questions" | "done";
+
+interface Question {
+  question: string;
+  answer: string;
+}
+
+const STYLES = [
+  { value: "casual", label: "담백하게", desc: "있는 그대로 솔직하게" },
+  { value: "emotional", label: "감성적으로", desc: "감정을 깊이 담아서" },
+  { value: "poetic", label: "시처럼", desc: "짧고 여운 있게" },
+  { value: "custom", label: "직접 입력", desc: "원하는 문체로" },
+];
+
+function LoadingDots() {
+  return (
+    <div className="flex flex-col gap-3 animate-pulse">
+      <div className="h-4 bg-stone-100 rounded-full w-3/4" />
+      <div className="h-4 bg-stone-100 rounded-full w-full" />
+      <div className="h-4 bg-stone-100 rounded-full w-5/6" />
+      <div className="h-4 bg-stone-100 rounded-full w-2/3" />
+      <div className="h-4 bg-stone-100 rounded-full w-full" />
+      <div className="h-4 bg-stone-100 rounded-full w-4/5" />
+    </div>
+  );
+}
+
+export default function NewDiaryPage() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const dateParam = searchParams.get("date");
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const { showToast } = useToast();
+
+  const [step, setStep] = useState<Step>("upload");
+  const [loading, setLoading] = useState(false);
+  const [loadingMsg, setLoadingMsg] = useState("");
+  const [diaryId, setDiaryId] = useState("");
+  const [photos, setPhotos] = useState<{ file: File; preview: string }[]>([]);
+  const [style, setStyle] = useState("casual");
+  const [customStyle, setCustomStyle] = useState("");
+  const [memo, setMemo] = useState("");
+  const [draft, setDraft] = useState("");
+  const [questions, setQuestions] = useState<Question[]>([]);
+  const [result, setResult] = useState<{ title: string; content: string; mood: string } | null>(null);
+  const [editing, setEditing] = useState(false);
+  const [editTitle, setEditTitle] = useState("");
+  const [editContent, setEditContent] = useState("");
+
+  function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const files = Array.from(e.target.files ?? []);
+    const newPhotos = files.map((file) => ({
+      file,
+      preview: URL.createObjectURL(file),
+    }));
+    setPhotos((prev) => [...prev, ...newPhotos].slice(0, 5));
+  }
+
+  async function handleNext(skipPhotos = false) {
+    setLoading(true);
+    setLoadingMsg(skipPhotos ? "일기 준비 중..." : "사진 분석 중...");
+    try {
+      const today = dateParam ?? new Date().toISOString().split("T")[0];
+      const resolvedStyle = style === "custom" ? (customStyle.trim() || "casual") : style;
+      const diary = await createDiary(today, resolvedStyle);
+      if (diary.detail) throw new Error(diary.detail);
+      setDiaryId(diary.id);
+      if (!skipPhotos) {
+        for (const photo of photos) {
+          const res = await uploadPhoto(diary.id, photo.file);
+          if (res.detail) throw new Error("사진 업로드에 실패했어요");
+        }
+      }
+      setStep("memo");
+    } catch {
+      showToast("사진 업로드 중 문제가 생겼어요. 다시 시도해줘요");
+    } finally {
+      setLoading(false);
+      setLoadingMsg("");
+    }
+  }
+
+  async function handleGenerateDraft() {
+    if (!memo.trim()) return;
+    setLoading(true);
+    setLoadingMsg("AI가 일기를 쓰고 있어요...");
+    try {
+      const data = await generateDraft(diaryId, memo);
+      if (!data.draft) throw new Error();
+      setDraft(data.draft);
+      setStep("draft");
+    } catch {
+      showToast("일기 초안 생성에 실패했어요. 다시 시도해줘요");
+    } finally {
+      setLoading(false);
+      setLoadingMsg("");
+    }
+  }
+
+  async function handleGenerateQuestions() {
+    setLoading(true);
+    setLoadingMsg("기억을 더 끌어낼 질문을 만들고 있어요...");
+    try {
+      const data = await generateQuestions(diaryId);
+      if (!data.questions) throw new Error();
+      setQuestions(data.questions.map((q: string) => ({ question: q, answer: "" })));
+      setStep("questions");
+    } catch {
+      showToast("질문 생성에 실패했어요. 다시 시도해줘요");
+    } finally {
+      setLoading(false);
+      setLoadingMsg("");
+    }
+  }
+
+  async function handleFinalize() {
+    setLoading(true);
+    setLoadingMsg("최종 일기를 완성하고 있어요...");
+    try {
+      const data = await finalizeDiary(diaryId, questions);
+      if (!data.content) throw new Error();
+      setResult(data);
+      setEditTitle(data.title);
+      setEditContent(data.content);
+      setStep("done");
+    } catch {
+      showToast("일기 완성에 실패했어요. 다시 시도해줘요");
+    } finally {
+      setLoading(false);
+      setLoadingMsg("");
+    }
+  }
+
+  return (
+    <div className="max-w-md mx-auto px-4 py-8">
+      <div className="flex items-center gap-3 mb-6">
+        <button onClick={() => router.back()} className="text-stone-400 text-sm">← 뒤로</button>
+        <h1 className="text-lg font-semibold">{dateParam ?? "오늘"}의 필름</h1>
+      </div>
+
+      {/* 로딩 스켈레톤 */}
+      {loading && (
+        <div className="flex flex-col gap-4">
+          <p className="text-sm text-stone-400 text-center">{loadingMsg}</p>
+          <LoadingDots />
+        </div>
+      )}
+
+      {!loading && step === "upload" && (
+        <div className="flex flex-col gap-5">
+          {/* 문체 선택 */}
+          <div className="flex flex-col gap-2">
+            <p className="text-sm text-stone-500">일기 문체를 골라줘요</p>
+            <div className="grid grid-cols-2 gap-2">
+              {STYLES.map((s) => (
+                <button
+                  key={s.value}
+                  onClick={() => setStyle(s.value)}
+                  className={`flex flex-col items-center gap-1 py-3 px-2 rounded-xl border text-sm transition-colors ${
+                    style === s.value
+                      ? "border-stone-800 bg-stone-800 text-white"
+                      : "border-stone-200 text-stone-600 hover:border-stone-300"
+                  }`}
+                >
+                  <span className="font-medium">{s.label}</span>
+                  <span className={`text-xs ${style === s.value ? "text-stone-300" : "text-stone-400"}`}>
+                    {s.desc}
+                  </span>
+                </button>
+              ))}
+            </div>
+            {style === "custom" && (
+              <input
+                type="text"
+                value={customStyle}
+                onChange={(e) => setCustomStyle(e.target.value)}
+                placeholder="예: 친구한테 말하듯이, 편지 형식으로..."
+                className="border border-stone-200 rounded-xl px-4 py-3 text-sm outline-none focus:border-stone-400"
+                autoFocus
+              />
+            )}
+          </div>
+
+          {/* 사진 업로드 */}
+          <div className="flex flex-col gap-2">
+            <p className="text-sm text-stone-500">사진을 올려줘요 (최대 5장)</p>
+            <div
+              onClick={() => fileInputRef.current?.click()}
+              className="border-2 border-dashed border-stone-200 rounded-2xl p-8 text-center text-stone-400 text-sm cursor-pointer hover:border-stone-300 transition-colors"
+            >
+              사진 선택하기
+            </div>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              multiple
+              className="hidden"
+              onChange={handleFileChange}
+            />
+            {photos.length > 0 && (
+              <div className="grid grid-cols-3 gap-2">
+                {photos.map((p, i) => (
+                  <div key={i} className="relative">
+                    <img src={p.preview} alt="" className="w-full h-24 object-cover rounded-xl" />
+                    <button
+                      onClick={() => setPhotos((prev) => prev.filter((_, idx) => idx !== i))}
+                      className="absolute top-1 right-1 bg-black/50 text-white rounded-full w-5 h-5 text-xs flex items-center justify-center"
+                    >
+                      ×
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <button
+            onClick={() => handleNext(false)}
+            disabled={photos.length === 0}
+            className="bg-stone-800 text-white rounded-xl py-3 text-sm font-medium disabled:opacity-40"
+          >
+            다음
+          </button>
+
+          {/* 사진 없이 시작 */}
+          <button
+            onClick={() => handleNext(true)}
+            className="text-stone-400 text-sm text-center underline underline-offset-2"
+          >
+            사진 없이 메모만으로 시작할게요
+          </button>
+        </div>
+      )}
+
+      {!loading && step === "memo" && (
+        <div className="flex flex-col gap-4">
+          <p className="text-sm text-stone-500">오늘 하루를 짧게 메모해줘요</p>
+          <textarea
+            value={memo}
+            onChange={(e) => setMemo(e.target.value)}
+            placeholder="예: 친구랑 성수에서 밥 먹었어. 오랜만에 만나서 좋았음"
+            className="border border-stone-200 rounded-xl px-4 py-3 text-sm outline-none focus:border-stone-400 resize-none h-28"
+          />
+          <button
+            onClick={handleGenerateDraft}
+            disabled={!memo.trim()}
+            className="bg-stone-800 text-white rounded-xl py-3 text-sm font-medium disabled:opacity-40"
+          >
+            AI 일기 작성
+          </button>
+        </div>
+      )}
+
+      {!loading && step === "draft" && (
+        <div className="flex flex-col gap-4">
+          <p className="text-sm text-stone-500 font-medium">AI가 쓴 초안이에요</p>
+          <div className="bg-white rounded-2xl p-4 text-sm leading-7 text-stone-700 shadow-sm whitespace-pre-line">
+            {draft}
+          </div>
+          <button
+            onClick={handleGenerateQuestions}
+            className="bg-stone-800 text-white rounded-xl py-3 text-sm font-medium"
+          >
+            기억 더 떠올리기
+          </button>
+        </div>
+      )}
+
+      {!loading && step === "questions" && (
+        <div className="flex flex-col gap-5">
+          <p className="text-sm text-stone-500 font-medium">조금 더 이야기해줘요</p>
+          {questions.map((q, i) => (
+            <div key={i} className="flex flex-col gap-2">
+              <p className="text-sm font-medium text-stone-700">{q.question}</p>
+              <textarea
+                value={q.answer}
+                onChange={(e) => {
+                  const updated = [...questions];
+                  updated[i].answer = e.target.value;
+                  setQuestions(updated);
+                }}
+                placeholder="답변을 입력해줘요"
+                className="border border-stone-200 rounded-xl px-4 py-3 text-sm outline-none focus:border-stone-400 resize-none h-20"
+              />
+            </div>
+          ))}
+          <button
+            onClick={handleFinalize}
+            disabled={questions.some((q) => !q.answer.trim())}
+            className="bg-stone-800 text-white rounded-xl py-3 text-sm font-medium disabled:opacity-40"
+          >
+            일기 완성하기
+          </button>
+        </div>
+      )}
+
+      {!loading && step === "done" && result && (
+        <div className="flex flex-col gap-4">
+          {/* 보기 / 편집 토글 */}
+          <div className="flex bg-stone-100 rounded-xl p-1">
+            <button
+              onClick={() => setEditing(false)}
+              className={`flex-1 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                !editing ? "bg-white text-stone-800 shadow-sm" : "text-stone-400"
+              }`}
+            >
+              보기
+            </button>
+            <button
+              onClick={() => setEditing(true)}
+              className={`flex-1 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                editing ? "bg-white text-stone-800 shadow-sm" : "text-stone-400"
+              }`}
+            >
+              편집
+            </button>
+          </div>
+
+          {!editing ? (
+            <div className="bg-white rounded-2xl p-5 shadow-sm">
+              <p className="text-xs text-stone-400 mb-1">{result.mood}</p>
+              <h2 className="text-lg font-semibold mb-3">{editTitle || result.title}</h2>
+              <p className="text-sm leading-7 text-stone-700 whitespace-pre-line">{editContent || result.content}</p>
+            </div>
+          ) : (
+            <div className="flex flex-col gap-3">
+              <input
+                value={editTitle}
+                onChange={(e) => setEditTitle(e.target.value)}
+                className="border border-stone-200 rounded-xl px-4 py-3 text-sm font-medium outline-none focus:border-stone-400"
+                placeholder="제목"
+              />
+              <textarea
+                value={editContent}
+                onChange={(e) => setEditContent(e.target.value)}
+                className="border border-stone-200 rounded-xl px-4 py-3 text-sm leading-7 outline-none focus:border-stone-400 resize-none min-h-64"
+                placeholder="일기 내용"
+              />
+            </div>
+          )}
+
+          <button
+            onClick={async () => {
+              await updateDiaryContent(diaryId, editTitle, editContent);
+              router.replace("/diary");
+            }}
+            className="bg-stone-800 text-white rounded-xl py-3 text-sm font-medium"
+          >
+            저장하고 돌아가기
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}

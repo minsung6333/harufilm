@@ -1,0 +1,17 @@
+# 환경변수
+backend/.env
+frontend/.env.local
+
+# Python
+backend/venv/
+backend/__pycache__/
+backend/**/__pycache__/
+backend/**/*.pyc
+
+# Node
+frontend/node_modules/
+frontend/.next/
+
+# 기타
+.DS_Store
+*.log

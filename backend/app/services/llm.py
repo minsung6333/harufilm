@@ -1,0 +1,153 @@
+import json
+from openai import OpenAI
+from app.config import settings
+
+client = OpenAI(api_key=settings.openai_api_key)
+
+
+def analyze_photo(image_url: str) -> str:
+    response = client.chat.completions.create(
+        model="gpt-4o",
+        messages=[{
+            "role": "user",
+            "content": [
+                {
+                    "type": "image_url",
+                    "image_url": {"url": image_url},
+                },
+                {
+                    "type": "text",
+                    "text": (
+                        "이 사진을 보고 다음을 분석해줘:\n"
+                        "1. 장면 설명\n"
+                        "2. 장소 추정\n"
+                        "3. 분위기\n"
+                        "4. 주요 객체\n"
+                        "5. 일기 작성에 활용할 수 있는 단서\n\n"
+                        "한국어로 간결하게 답변해줘."
+                    ),
+                },
+            ],
+        }],
+        max_tokens=500,
+    )
+    return response.choices[0].message.content
+
+
+def _profile_context(profile: dict | None) -> str:
+    if not profile:
+        return ""
+    parts = []
+    if profile.get("nickname"):
+        parts.append(f"사용자 이름은 {profile['nickname']}이야.")
+    if profile.get("topics"):
+        parts.append(f"주로 {', '.join(profile['topics'])}에 관한 것을 기록해.")
+    length_map = {"short": "짧고 간결하게", "medium": "적당한 길이로", "long": "풍부하고 자세하게"}
+    if profile.get("diary_length") in length_map:
+        parts.append(f"일기는 {length_map[profile['diary_length']]} 써줘.")
+    return " ".join(parts)
+
+
+def generate_draft(photo_captions: list[str], user_memo: str, style: str, profile: dict | None = None) -> str:
+    captions_text = "\n".join(f"- {c}" for c in photo_captions)
+    profile_ctx = _profile_context(profile)
+    response = client.chat.completions.create(
+        model="gpt-4o",
+        messages=[
+            {
+                "role": "system",
+                "content": (
+                    f"너는 감성적인 일기 작가야. "
+                    f"사진 설명과 사용자 메모를 바탕으로 {style} 문체의 일기를 써줘. "
+                    "일기는 1인칭 시점으로 자연스럽게 작성해줘. "
+                    + profile_ctx
+                ),
+            },
+            {
+                "role": "user",
+                "content": f"사진 설명:\n{captions_text}\n\n메모: {user_memo}\n\n일기를 써줘.",
+            },
+        ],
+        max_tokens=800,
+    )
+    return response.choices[0].message.content
+
+
+def generate_questions(photo_captions: list[str], draft: str) -> list[str]:
+    captions_text = "\n".join(f"- {c}" for c in photo_captions)
+    response = client.chat.completions.create(
+        model="gpt-4o-mini",
+        messages=[
+            {
+                "role": "system",
+                "content": (
+                    "너는 일기 작가를 도와주는 조수야. "
+                    "사용자가 그날의 기억을 더 구체적으로 떠올릴 수 있도록 "
+                    "짧고 따뜻한 질문 3개를 만들어줘. "
+                    "질문만 줄바꿈으로 구분해서 반환해줘."
+                ),
+            },
+            {
+                "role": "user",
+                "content": f"사진 설명:\n{captions_text}\n\n일기 초안:\n{draft}",
+            },
+        ],
+        max_tokens=300,
+    )
+    content = response.choices[0].message.content
+    questions = [q.strip() for q in content.strip().split("\n") if q.strip()]
+    return questions[:3]
+
+
+def refine_diary(current_content: str, user_request: str, style: str) -> str:
+    response = client.chat.completions.create(
+        model="gpt-4o",
+        messages=[
+            {
+                "role": "system",
+                "content": (
+                    f"너는 감성적인 일기 작가야. "
+                    f"사용자의 요청에 따라 기존 일기를 수정해줘. "
+                    f"문체는 {style}체를 유지하고, 전체 흐름을 자연스럽게 다듬어줘. "
+                    "수정된 일기 본문만 반환해줘."
+                ),
+            },
+            {
+                "role": "user",
+                "content": f"기존 일기:\n{current_content}\n\n수정 요청: {user_request}",
+            },
+        ],
+        max_tokens=2000,
+    )
+    return response.choices[0].message.content
+
+
+def finalize_diary(draft: str, answers: list[dict], style: str) -> dict:
+    qa_text = "\n".join(
+        f"Q: {item['question']}\nA: {item['answer']}" for item in answers
+    )
+    response = client.chat.completions.create(
+        model="gpt-4o",
+        messages=[
+            {
+                "role": "system",
+                "content": (
+                    f"너는 감성적인 일기 작가야. "
+                    f"초안과 추가 답변을 바탕으로 {style} 문체의 완성된 일기를 써줘. "
+                    "반드시 JSON 형식으로 반환해줘: "
+                    '{"title": "...", "content": "...", "mood": "..."}'
+                ),
+            },
+            {
+                "role": "user",
+                "content": f"일기 초안:\n{draft}\n\n추가 답변:\n{qa_text}",
+            },
+        ],
+        max_tokens=2000,
+        response_format={"type": "json_object"},
+    )
+    try:
+        return json.loads(response.choices[0].message.content)
+    except json.JSONDecodeError:
+        content = response.choices[0].message.content
+        return {"title": "오늘의 하루", "content": content, "mood": ""}
