@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createDiary, uploadPhoto, generateDraft, generateQuestions, finalizeDiary, updateDiaryContent } from "@/lib/api";
 import { useToast } from "@/components/Toast";
@@ -32,7 +32,7 @@ function LoadingDots() {
   );
 }
 
-export default function NewDiaryPage() {
+function NewDiaryContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const dateParam = searchParams.get("date");
@@ -359,5 +359,13 @@ export default function NewDiaryPage() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function NewDiaryPage() {
+  return (
+    <Suspense>
+      <NewDiaryContent />
+    </Suspense>
   );
 }
