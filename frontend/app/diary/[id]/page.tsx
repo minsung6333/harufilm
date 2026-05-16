@@ -92,7 +92,7 @@ export default function DiaryDetailPage() {
     setChatMessages((prev) => [...prev, { role: "user", content: userMsg }]);
     setRefining(true);
     try {
-      const data = await refineDiary(id, userMsg);
+      const data = await refineDiary(id, userMsg, chatMessages);
       if (!data.content) throw new Error();
       setContent(data.content);
       const newRev: Revision = {

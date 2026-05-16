@@ -41,8 +41,14 @@ class FinalizeRequest(BaseModel):
     answers: list[dict]  # [{"question": "...", "answer": "..."}]
 
 
+class ChatMessage(BaseModel):
+    role: str
+    content: str
+
+
 class RefineRequest(BaseModel):
     message: str
+    history: list[ChatMessage] = []
 
 
 class RestoreRequest(BaseModel):

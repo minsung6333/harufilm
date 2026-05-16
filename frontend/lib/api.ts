@@ -84,6 +84,14 @@ export async function generateDraft(diaryId: string, memo: string) {
   return res.json();
 }
 
+export async function generatePhotoQuestions(diaryId: string) {
+  const res = await fetch(`${BASE_URL}/diaries/${diaryId}/generate-photo-questions`, {
+    method: "POST",
+    headers: await getHeaders(),
+  });
+  return res.json();
+}
+
 export async function generateQuestions(diaryId: string) {
   const res = await fetch(`${BASE_URL}/diaries/${diaryId}/generate-questions`, {
     method: "POST",
@@ -132,11 +140,11 @@ export async function restoreRevision(diaryId: string, content: string) {
   return res.json();
 }
 
-export async function refineDiary(diaryId: string, message: string) {
+export async function refineDiary(diaryId: string, message: string, history: { role: string; content: string }[] = []) {
   const res = await fetch(`${BASE_URL}/diaries/${diaryId}/refine`, {
     method: "POST",
     headers: await getHeaders(),
-    body: JSON.stringify({ message }),
+    body: JSON.stringify({ message, history }),
   });
   return res.json();
 }

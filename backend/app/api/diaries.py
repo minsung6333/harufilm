@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from app.db import supabase
 from app.dependencies import get_current_user
-from app.models.schemas import DiaryCreate, GenerateDraftRequest, FinalizeRequest, RefineRequest, RestoreRequest
+from app.models.schemas import DiaryCreate, GenerateDraftRequest, FinalizeRequest, RefineRequest, RestoreRequest, ChatMessage
 from app.services import llm
 
 router = APIRouter()
@@ -60,6 +60,28 @@ async def get_diary(diary_id: str, user=Depends(get_current_user)):
     if not result.data:
         raise HTTPException(status_code=404, detail="Diary not found")
     return result.data
+
+
+@router.post("/{diary_id}/generate-photo-questions")
+async def generate_photo_questions(diary_id: str, user=Depends(get_current_user)):
+    diary = (
+        supabase.table("diary_entries")
+        .select("photos(*)")
+        .eq("id", diary_id)
+        .eq("user_id", str(user.id))
+        .single()
+        .execute()
+    )
+    if not diary.data:
+        raise HTTPException(status_code=404, detail="Diary not found")
+
+    photos = diary.data.get("photos", [])
+    captions = [p["ai_caption"] for p in photos if p.get("ai_caption")]
+    if not captions:
+        raise HTTPException(status_code=400, detail="사진을 먼저 업로드해주세요")
+
+    questions = llm.generate_photo_questions(captions)
+    return {"questions": questions}
 
 
 @router.post("/{diary_id}/generate-draft")
@@ -264,6 +286,7 @@ async def refine_diary(
         diary.data["content"],
         data.message,
         diary.data["style"],
+        history=[h.model_dump() for h in data.history],
     )
 
     supabase.table("diary_entries").update({"content": refined}).eq("id", diary_id).execute()

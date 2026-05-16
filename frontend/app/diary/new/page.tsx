@@ -2,10 +2,10 @@
 
 import { useState, useRef, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { createDiary, uploadPhoto, generateDraft, generateQuestions, finalizeDiary, updateDiaryContent } from "@/lib/api";
+import { createDiary, uploadPhoto, generateDraft, generatePhotoQuestions, generateQuestions, finalizeDiary, updateDiaryContent } from "@/lib/api";
 import { useToast } from "@/components/Toast";
 
-type Step = "upload" | "memo" | "draft" | "questions" | "done";
+type Step = "upload" | "photo_questions" | "memo" | "draft" | "questions" | "done";
 
 interface Question {
   question: string;
@@ -50,6 +50,7 @@ function NewDiaryContent() {
   const [customStyle, setCustomStyle] = useState("");
   const [memo, setMemo] = useState("");
   const [draft, setDraft] = useState("");
+  const [photoQuestions, setPhotoQuestions] = useState<Question[]>([]);
   const [questions, setQuestions] = useState<Question[]>([]);
   const [result, setResult] = useState<{ title: string; content: string; mood: string } | null>(null);
   const [editing, setEditing] = useState(false);
@@ -83,9 +84,17 @@ function NewDiaryContent() {
         setDiaryId(currentDiaryId);
       }
       if (!skipPhotos && photos.length > 0) {
+        setLoadingMsg("사진 분석 중...");
         for (const photo of photos) {
           const res = await uploadPhoto(currentDiaryId, photo.file);
           if (res.detail) throw new Error("사진 업로드에 실패했어요");
+        }
+        setLoadingMsg("사진에 대해 물어볼게요...");
+        const pq = await generatePhotoQuestions(currentDiaryId);
+        if (pq.questions?.length > 0) {
+          setPhotoQuestions(pq.questions.map((q: string) => ({ question: q, answer: "" })));
+          setStep("photo_questions");
+          return;
         }
       }
       setStep("memo");
@@ -102,17 +111,11 @@ function NewDiaryContent() {
     setLoading(true);
     setLoadingMsg("AI가 일기를 쓰고 있어요...");
     try {
-      const photoMeta = photos
-        .filter((p) => p.who || p.where || p.what)
-        .map((p, i) => {
-          const parts = [];
-          if (p.who) parts.push(`누구와: ${p.who}`);
-          if (p.where) parts.push(`장소: ${p.where}`);
-          if (p.what) parts.push(`내용: ${p.what}`);
-          return `[사진 ${i + 1}] ${parts.join(", ")}`;
-        })
+      const photoQA = photoQuestions
+        .filter((q) => q.answer.trim())
+        .map((q) => `Q: ${q.question}\nA: ${q.answer}`)
         .join("\n");
-      const fullMemo = photoMeta ? `${memo}\n\n[사진 정보]\n${photoMeta}` : memo;
+      const fullMemo = photoQA ? `${memo}\n\n[사진에 대한 추가 정보]\n${photoQA}` : memo;
       const data = await generateDraft(diaryId, fullMemo);
       if (!data.draft) throw new Error();
       setDraft(data.draft);
@@ -278,6 +281,39 @@ function NewDiaryContent() {
             className="text-stone-400 text-sm text-center underline underline-offset-2"
           >
             사진 없이 메모만으로 시작할게요
+          </button>
+        </div>
+      )}
+
+      {!loading && step === "photo_questions" && (
+        <div className="flex flex-col gap-5">
+          <p className="text-sm text-stone-500 font-medium">사진에 대해 조금 알려줘요</p>
+          {photoQuestions.map((q, i) => (
+            <div key={i} className="flex flex-col gap-2">
+              <p className="text-sm font-medium text-stone-700">{q.question}</p>
+              <textarea
+                value={q.answer}
+                onChange={(e) => {
+                  const updated = [...photoQuestions];
+                  updated[i].answer = e.target.value;
+                  setPhotoQuestions(updated);
+                }}
+                placeholder="답변을 입력해줘요 (선택사항)"
+                className="border border-stone-200 rounded-xl px-4 py-3 text-sm outline-none focus:border-stone-400 resize-none h-20"
+              />
+            </div>
+          ))}
+          <button
+            onClick={() => setStep("memo")}
+            className="bg-stone-800 text-white rounded-xl py-3 text-sm font-medium"
+          >
+            다음
+          </button>
+          <button
+            onClick={() => { setPhotoQuestions([]); setStep("memo"); }}
+            className="text-stone-400 text-sm text-center underline underline-offset-2"
+          >
+            건너뛸게요
           </button>
         </div>
       )}

@@ -77,6 +77,34 @@ def generate_draft(photo_captions: list[str], user_memo: str, style: str, profil
     return response.choices[0].message.content
 
 
+def generate_photo_questions(photo_captions: list[str]) -> list[str]:
+    captions_text = "\n".join(f"- {c}" for c in photo_captions)
+    response = client.chat.completions.create(
+        model="gpt-4o-mini",
+        messages=[
+            {
+                "role": "system",
+                "content": (
+                    "너는 일기 작성을 돕는 조수야. "
+                    "사진 분석 내용을 바탕으로, 사용자가 그날을 더 잘 기록할 수 있도록 "
+                    "맥락에 맞는 질문 2~3개를 만들어줘. "
+                    "사진에 사람이 보이면 누구인지, 장소가 특정되면 어디인지, "
+                    "무엇을 하는 장면인지 등을 자연스럽게 물어봐. "
+                    "질문만 줄바꿈으로 구분해서 반환해줘."
+                ),
+            },
+            {
+                "role": "user",
+                "content": f"사진 분석:\n{captions_text}",
+            },
+        ],
+        max_tokens=300,
+    )
+    content = response.choices[0].message.content
+    questions = [q.strip() for q in content.strip().split("\n") if q.strip()]
+    return questions[:3]
+
+
 def generate_questions(photo_captions: list[str], draft: str) -> list[str]:
     captions_text = "\n".join(f"- {c}" for c in photo_captions)
     response = client.chat.completions.create(
@@ -103,24 +131,30 @@ def generate_questions(photo_captions: list[str], draft: str) -> list[str]:
     return questions[:3]
 
 
-def refine_diary(current_content: str, user_request: str, style: str) -> str:
+def refine_diary(current_content: str, user_request: str, style: str, history: list[dict] | None = None) -> str:
+    messages = [
+        {
+            "role": "system",
+            "content": (
+                f"너는 감성적인 일기 작가야. "
+                f"사용자의 요청에 따라 기존 일기를 수정해줘. "
+                f"문체는 {style}체를 유지하고, 전체 흐름을 자연스럽게 다듬어줘. "
+                "수정된 일기 본문만 반환해줘."
+            ),
+        },
+        {
+            "role": "user",
+            "content": f"다음은 현재 일기야:\n\n{current_content}",
+        },
+    ]
+    if history:
+        for msg in history:
+            messages.append({"role": msg["role"], "content": msg["content"]})
+    messages.append({"role": "user", "content": user_request})
+
     response = client.chat.completions.create(
         model="gpt-4o",
-        messages=[
-            {
-                "role": "system",
-                "content": (
-                    f"너는 감성적인 일기 작가야. "
-                    f"사용자의 요청에 따라 기존 일기를 수정해줘. "
-                    f"문체는 {style}체를 유지하고, 전체 흐름을 자연스럽게 다듬어줘. "
-                    "수정된 일기 본문만 반환해줘."
-                ),
-            },
-            {
-                "role": "user",
-                "content": f"기존 일기:\n{current_content}\n\n수정 요청: {user_request}",
-            },
-        ],
+        messages=messages,
         max_tokens=2000,
     )
     return response.choices[0].message.content
