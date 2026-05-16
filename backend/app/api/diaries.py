@@ -11,12 +11,12 @@ router = APIRouter()
 async def search_diaries(q: str, user=Depends(get_current_user)):
     if not q.strip():
         return []
+    sq = q.replace("%", r"\%").replace("_", r"\_")
     result = (
         supabase.table("diary_entries")
-        .select("id, title, content, mood, diary_date, photos(image_url)")
+        .select("id, title, content, mood, diary_date, status, photos(image_url)")
         .eq("user_id", str(user.id))
-        .eq("status", "completed")
-        .or_(f"title.ilike.%{q}%,content.ilike.%{q}%,mood.ilike.%{q}%")
+        .or_(f"title.ilike.%{sq}%,content.ilike.%{sq}%,mood.ilike.%{sq}%,draft_content.ilike.%{sq}%")
         .order("diary_date", desc=True)
         .execute()
     )
@@ -40,6 +40,7 @@ async def list_diaries(user=Depends(get_current_user)):
         .select("*, photos(*)")
         .eq("user_id", str(user.id))
         .order("diary_date", desc=True)
+        .order("display_order", foreign_table="photos")
         .execute()
     )
     return result.data
@@ -52,6 +53,7 @@ async def get_diary(diary_id: str, user=Depends(get_current_user)):
         .select("*, photos(*)")
         .eq("id", diary_id)
         .eq("user_id", str(user.id))
+        .order("display_order", foreign_table="photos")
         .single()
         .execute()
     )
@@ -79,9 +81,6 @@ async def generate_draft(
 
     photos = diary.data.get("photos", [])
     captions = [p["ai_caption"] for p in photos if p.get("ai_caption")]
-
-    if not captions:
-        raise HTTPException(status_code=400, detail="사진을 먼저 업로드해주세요")
 
     profile = supabase.table("profiles").select("*").eq("id", str(user.id)).single().execute()
     draft = llm.generate_draft(captions, data.memo, diary.data["style"], profile.data)

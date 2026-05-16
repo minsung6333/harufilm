@@ -106,26 +106,39 @@ export default function DiaryListPage() {
           {searching && (
             <p className="text-xs text-stone-400 mb-1">{displayed.length}개의 일기를 찾았어요</p>
           )}
-          {displayed.map((diary) => (
-            <Link key={diary.id} href={`/diary/${diary.id}`}>
-              <div className="bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-shadow">
-                {diary.photos?.[0] && (
-                  <img
-                    src={diary.photos[0].image_url}
-                    alt=""
-                    className="w-full h-40 object-cover"
-                  />
-                )}
-                <div className="p-4">
-                  <p className="text-xs text-stone-400 mb-1">{diary.diary_date}</p>
-                  <p className="font-medium text-sm">{diary.title ?? "제목 없음"}</p>
-                  {diary.mood && (
-                    <p className="text-xs text-stone-400 mt-1">{diary.mood}</p>
+          {displayed.map((diary) => {
+            const isComplete = diary.status === "completed";
+            return (
+              <Link
+                key={diary.id}
+                href={isComplete ? `/diary/${diary.id}` : `/diary/new?resumeId=${diary.id}`}
+              >
+                <div className="bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-shadow">
+                  {diary.photos?.[0] && (
+                    <img
+                      src={diary.photos[0].image_url}
+                      alt=""
+                      className="w-full h-40 object-cover"
+                    />
                   )}
+                  <div className="p-4">
+                    <div className="flex items-center justify-between mb-1">
+                      <p className="text-xs text-stone-400">{diary.diary_date}</p>
+                      {!isComplete && (
+                        <span className="text-xs bg-amber-100 text-amber-600 px-2 py-0.5 rounded-full">
+                          이어 작성
+                        </span>
+                      )}
+                    </div>
+                    <p className="font-medium text-sm">{diary.title ?? "제목 없음"}</p>
+                    {diary.mood && (
+                      <p className="text-xs text-stone-400 mt-1">{diary.mood}</p>
+                    )}
+                  </div>
                 </div>
-              </div>
-            </Link>
-          ))}
+              </Link>
+            );
+          })}
         </div>
       )}
       <BottomNav />

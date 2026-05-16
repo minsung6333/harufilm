@@ -37,13 +37,14 @@ function NewDiaryContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const dateParam = searchParams.get("date");
+  const resumeId = searchParams.get("resumeId");
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { showToast } = useToast();
 
-  const [step, setStep] = useState<Step>("upload");
+  const [step, setStep] = useState<Step>(resumeId ? "memo" : "upload");
   const [loading, setLoading] = useState(false);
   const [loadingMsg, setLoadingMsg] = useState("");
-  const [diaryId, setDiaryId] = useState("");
+  const [diaryId, setDiaryId] = useState(resumeId ?? "");
   const [photos, setPhotos] = useState<{ file: File; preview: string; who: string; where: string; what: string }[]>([]);
   const [style, setStyle] = useState("casual");
   const [customStyle, setCustomStyle] = useState("");
@@ -71,21 +72,25 @@ function NewDiaryContent() {
     setLoading(true);
     setLoadingMsg(skipPhotos ? "일기 준비 중..." : "사진 분석 중...");
     try {
-      const d = new Date();
-      const today = dateParam ?? `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-      const resolvedStyle = style === "custom" ? (customStyle.trim() || "casual") : style;
-      const diary = await createDiary(today, resolvedStyle);
-      if (diary.detail) throw new Error(diary.detail);
-      setDiaryId(diary.id);
-      if (!skipPhotos) {
+      let currentDiaryId = diaryId;
+      if (!currentDiaryId) {
+        const d = new Date();
+        const today = dateParam ?? `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+        const resolvedStyle = style === "custom" ? (customStyle.trim() || "casual") : style;
+        const diary = await createDiary(today, resolvedStyle);
+        if (diary.detail) throw new Error(diary.detail);
+        currentDiaryId = diary.id;
+        setDiaryId(currentDiaryId);
+      }
+      if (!skipPhotos && photos.length > 0) {
         for (const photo of photos) {
-          const res = await uploadPhoto(diary.id, photo.file);
+          const res = await uploadPhoto(currentDiaryId, photo.file);
           if (res.detail) throw new Error("사진 업로드에 실패했어요");
         }
       }
       setStep("memo");
     } catch {
-      showToast("사진 업로드 중 문제가 생겼어요. 다시 시도해줘요");
+      showToast("업로드 중 문제가 생겼어요. 다시 시도해줘요");
     } finally {
       setLoading(false);
       setLoadingMsg("");
@@ -158,7 +163,7 @@ function NewDiaryContent() {
     <div className="max-w-md mx-auto px-4 py-8">
       <div className="flex items-center gap-3 mb-6">
         <button onClick={() => router.back()} className="text-stone-400 text-sm">← 뒤로</button>
-        <h1 className="text-lg font-semibold">{dateParam ?? "오늘"}의 필름</h1>
+        <h1 className="text-lg font-semibold">{resumeId ? "이어 작성" : `${dateParam ?? "오늘"}의 필름`}</h1>
       </div>
 
       {/* 로딩 스켈레톤 */}

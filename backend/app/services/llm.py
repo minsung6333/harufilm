@@ -49,8 +49,12 @@ def _profile_context(profile: dict | None) -> str:
 
 
 def generate_draft(photo_captions: list[str], user_memo: str, style: str, profile: dict | None = None) -> str:
-    captions_text = "\n".join(f"- {c}" for c in photo_captions)
     profile_ctx = _profile_context(profile)
+    if photo_captions:
+        captions_text = "\n".join(f"- {c}" for c in photo_captions)
+        user_content = f"사진 설명:\n{captions_text}\n\n메모: {user_memo}\n\n일기를 써줘."
+    else:
+        user_content = f"메모: {user_memo}\n\n일기를 써줘."
     response = client.chat.completions.create(
         model="gpt-4o",
         messages=[
@@ -58,14 +62,14 @@ def generate_draft(photo_captions: list[str], user_memo: str, style: str, profil
                 "role": "system",
                 "content": (
                     f"너는 감성적인 일기 작가야. "
-                    f"사진 설명과 사용자 메모를 바탕으로 {style} 문체의 일기를 써줘. "
+                    f"사용자 메모를 바탕으로 {style} 문체의 일기를 써줘. "
                     "일기는 1인칭 시점으로 자연스럽게 작성해줘. "
                     + profile_ctx
                 ),
             },
             {
                 "role": "user",
-                "content": f"사진 설명:\n{captions_text}\n\n메모: {user_memo}\n\n일기를 써줘.",
+                "content": user_content,
             },
         ],
         max_tokens=800,
