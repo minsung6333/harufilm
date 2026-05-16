@@ -207,7 +207,7 @@ function NewDiaryContent() {
       </div>
 
       {loading && (
-        <LoadingScreen msg={loadingMsg}
+        <LoadingScreen msg={loadingMsg} />
       )}
 
       {!loading && step === "upload" && (
