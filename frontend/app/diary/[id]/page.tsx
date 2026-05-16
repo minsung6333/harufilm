@@ -33,6 +33,7 @@ export default function DiaryDetailPage() {
   const [diary, setDiary] = useState<Diary | null>(null);
   const [loading, setLoading] = useState(true);
   const [content, setContent] = useState("");
+  const [mood, setMood] = useState("");
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
   const [refining, setRefining] = useState(false);
@@ -46,6 +47,7 @@ export default function DiaryDetailPage() {
     getDiary(id).then((data) => {
       setDiary(data);
       setContent(data.content ?? data.draft_content ?? "");
+      setMood(data.mood ?? "");
       setLoading(false);
     });
     getRevisions(id).then((data) => {
@@ -95,6 +97,7 @@ export default function DiaryDetailPage() {
       const data = await refineDiary(id, userMsg, chatMessages);
       if (!data.content) throw new Error();
       setContent(data.content);
+      if (data.mood) setMood(data.mood);
       const newRev: Revision = {
         id: crypto.randomUUID(),
         content: data.content,
@@ -141,7 +144,7 @@ export default function DiaryDetailPage() {
 
       {/* 일기 본문 */}
       <p className="text-xs text-stone-400 mb-1">{diary.diary_date}</p>
-      {diary.mood && <p className="text-xs text-stone-400 mb-3">{diary.mood}</p>}
+      {mood && <p className="text-xs text-stone-400 mb-3">{mood}</p>}
       <h1 className="text-xl font-semibold mb-4">{diary.title ?? "제목 없음"}</h1>
       <p className="text-sm leading-7 text-stone-700 whitespace-pre-line mb-8">{content}</p>
 
