@@ -289,14 +289,19 @@ async def refine_diary(
     if not diary.data.get("content"):
         raise HTTPException(status_code=400, detail="완성된 일기가 없어요")
 
-    refined = llm.refine_diary(
+    result = llm.refine_diary(
         diary.data["content"],
         data.message,
         diary.data["style"],
         history=[h.model_dump() for h in data.history],
     )
+    refined_content = result.get("content", "")
+    refined_mood = result.get("mood", "")
 
-    supabase.table("diary_entries").update({"content": refined}).eq("id", diary_id).execute()
+    update_data: dict = {"content": refined_content}
+    if refined_mood:
+        update_data["mood"] = refined_mood
+    supabase.table("diary_entries").update(update_data).eq("id", diary_id).execute()
 
     conv = (
         supabase.table("conversations")
@@ -315,11 +320,11 @@ async def refine_diary(
         supabase.table("messages").insert({
             "conversation_id": conv.data["id"],
             "role": "assistant",
-            "content": refined,
+            "content": refined_content,
             "message_type": "final",
         }).execute()
 
-    return {"content": refined}
+    return {"content": refined_content, "mood": refined_mood}
 
 
 @router.get("/{diary_id}/messages")

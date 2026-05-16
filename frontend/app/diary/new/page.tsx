@@ -134,6 +134,11 @@ function NewDiaryContent() {
           return;
         }
       }
+      if (skipPhotos || photos.length === 0) {
+        setPhotoQuestions([{ question: "오늘 하루 전반적인 기분은 어땠나요?", answer: "" }]);
+        setStep("photo_questions");
+        return;
+      }
       setStep("memo");
     } catch {
       showToast("업로드 중 문제가 생겼어요. 다시 시도해줘요");

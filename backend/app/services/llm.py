@@ -87,7 +87,7 @@ def generate_photo_questions(photo_captions: list[str]) -> list[str]:
                 "content": (
                     "너는 일기 작성을 돕는 조수야. "
                     "사진 분석 내용을 바탕으로, 사용자가 그날을 더 잘 기록할 수 있도록 "
-                    "맥락에 맞는 질문 2~3개를 만들어줘. "
+                    "맥락에 맞는 질문 2개를 만들어줘. "
                     "사진에 사람이 보이면 누구인지, 장소가 특정되면 어디인지, "
                     "무엇을 하는 장면인지 등을 자연스럽게 물어봐. "
                     "질문만 줄바꿈으로 구분해서 반환해줘."
@@ -102,7 +102,9 @@ def generate_photo_questions(photo_captions: list[str]) -> list[str]:
     )
     content = response.choices[0].message.content
     questions = [q.strip() for q in content.strip().split("\n") if q.strip()]
-    return questions[:3]
+    photo_qs = questions[:2]
+    photo_qs.append("오늘 하루 전반적인 기분은 어땠나요?")
+    return photo_qs
 
 
 def generate_questions(photo_captions: list[str], draft: str) -> list[str]:
@@ -131,7 +133,7 @@ def generate_questions(photo_captions: list[str], draft: str) -> list[str]:
     return questions[:3]
 
 
-def refine_diary(current_content: str, user_request: str, style: str, history: list[dict] | None = None) -> str:
+def refine_diary(current_content: str, user_request: str, style: str, history: list[dict] | None = None) -> dict:
     messages = [
         {
             "role": "system",
@@ -139,7 +141,8 @@ def refine_diary(current_content: str, user_request: str, style: str, history: l
                 f"너는 감성적인 일기 작가야. "
                 f"사용자의 요청에 따라 기존 일기를 수정해줘. "
                 f"문체는 {style}체를 유지하고, 전체 흐름을 자연스럽게 다듬어줘. "
-                "수정된 일기 본문만 반환해줘."
+                "반드시 JSON 형식으로 반환해줘: "
+                '{"content": "수정된 일기 본문", "mood": "한 줄 감정 요약"}'
             ),
         },
         {
@@ -156,8 +159,12 @@ def refine_diary(current_content: str, user_request: str, style: str, history: l
         model="gpt-4o",
         messages=messages,
         max_tokens=2000,
+        response_format={"type": "json_object"},
     )
-    return response.choices[0].message.content
+    try:
+        return json.loads(response.choices[0].message.content)
+    except json.JSONDecodeError:
+        return {"content": response.choices[0].message.content, "mood": ""}
 
 
 def finalize_diary(draft: str, answers: list[dict], style: str) -> dict:
