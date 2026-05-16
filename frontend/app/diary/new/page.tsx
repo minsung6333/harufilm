@@ -20,15 +20,55 @@ const STYLES = [
   { value: "custom", label: "직접 입력", desc: "원하는 문체로" },
 ];
 
-function LoadingDots() {
+const LOADING_STEPS: Record<string, { steps: string[]; icon: string }> = {
+  "사진 분석 중...": {
+    icon: "📷",
+    steps: ["사진 업로드 중", "AI가 사진을 분석하고 있어요", "조금만 기다려줘요"],
+  },
+  "사진에 대해 물어볼게요...": {
+    icon: "💬",
+    steps: ["분석 완료", "질문을 만들고 있어요"],
+  },
+  "AI가 일기를 쓰고 있어요...": {
+    icon: "✍️",
+    steps: ["메모를 읽고 있어요", "일기를 작성하고 있어요", "문장을 다듬고 있어요"],
+  },
+  "기억을 더 끌어낼 질문을 만들고 있어요...": {
+    icon: "🤔",
+    steps: ["초안을 분석하고 있어요", "질문을 만들고 있어요"],
+  },
+  "최종 일기를 완성하고 있어요...": {
+    icon: "📖",
+    steps: ["답변을 반영하고 있어요", "일기를 완성하고 있어요", "마무리 중이에요"],
+  },
+  "일기 준비 중...": {
+    icon: "📝",
+    steps: ["준비하고 있어요"],
+  },
+};
+
+function LoadingScreen({ msg }: { msg: string }) {
+  const config = LOADING_STEPS[msg] ?? { icon: "⏳", steps: ["처리 중이에요"] };
   return (
-    <div className="flex flex-col gap-3 animate-pulse">
-      <div className="h-4 bg-stone-100 rounded-full w-3/4" />
-      <div className="h-4 bg-stone-100 rounded-full w-full" />
-      <div className="h-4 bg-stone-100 rounded-full w-5/6" />
-      <div className="h-4 bg-stone-100 rounded-full w-2/3" />
-      <div className="h-4 bg-stone-100 rounded-full w-full" />
-      <div className="h-4 bg-stone-100 rounded-full w-4/5" />
+    <div className="flex flex-col items-center justify-center min-h-[60vh] gap-8 px-4">
+      <div className="text-5xl animate-bounce">{config.icon}</div>
+      <div className="flex flex-col items-center gap-2 text-center">
+        <p className="text-base font-medium text-stone-700">{msg.replace("...", "")}</p>
+        <p className="text-xs text-stone-400">잠시만 기다려줘요</p>
+      </div>
+      <div className="flex flex-col gap-3 w-full max-w-xs">
+        {config.steps.map((step, i) => (
+          <div key={i} className="flex items-center gap-3">
+            <div className="w-5 h-5 rounded-full bg-stone-800 flex items-center justify-center shrink-0 animate-pulse" style={{ animationDelay: `${i * 0.4}s` }}>
+              <div className="w-1.5 h-1.5 rounded-full bg-white" />
+            </div>
+            <p className="text-sm text-stone-500">{step}</p>
+          </div>
+        ))}
+        <div className="mt-2 h-1 bg-stone-100 rounded-full overflow-hidden">
+          <div className="h-full w-1/2 bg-stone-400 rounded-full" style={{ animation: "loading 1.6s ease-in-out infinite" }} />
+        </div>
+      </div>
     </div>
   );
 }
@@ -166,12 +206,8 @@ function NewDiaryContent() {
         <h1 className="text-lg font-semibold">{resumeId ? "이어 작성" : `${dateParam ?? "오늘"}의 필름`}</h1>
       </div>
 
-      {/* 로딩 스켈레톤 */}
       {loading && (
-        <div className="flex flex-col gap-4">
-          <p className="text-sm text-stone-400 text-center">{loadingMsg}</p>
-          <LoadingDots />
-        </div>
+        <LoadingScreen msg={loadingMsg}
       )}
 
       {!loading && step === "upload" && (

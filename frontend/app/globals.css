@@ -8,6 +8,17 @@
   animation: fade-in 0.2s ease;
 }
 
+@keyframes loading {
+  0%   { transform: translateX(-100%); }
+  50%  { transform: translateX(60%); }
+  100% { transform: translateX(200%); }
+}
+@keyframes shimmer {
+  0%   { opacity: 0.4; }
+  50%  { opacity: 1; }
+  100% { opacity: 0.4; }
+}
+
 :root {
   --background: #ffffff;
   --foreground: #171717;
