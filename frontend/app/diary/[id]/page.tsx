@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { getDiary, refineDiary, getRevisions, restoreRevision, deleteDiary } from "@/lib/api";
+import { getDiary, refineDiary, getRevisions, restoreRevision, deleteDiary, getDiaryMessages } from "@/lib/api";
 import { useToast } from "@/components/Toast";
 
 interface Diary {
@@ -53,6 +53,18 @@ export default function DiaryDetailPage() {
         setRevisions(data);
         setActiveRevisionId(data[data.length - 1].id);
       }
+    });
+    getDiaryMessages(id).then((msgs) => {
+      if (!Array.isArray(msgs)) return;
+      const firstFinalIdx = msgs.findIndex((m: { message_type: string }) => m.message_type === "final");
+      const refinements = firstFinalIdx >= 0 ? msgs.slice(firstFinalIdx + 1) : [];
+      const history = refinements
+        .filter((m: { message_type: string }) => m.message_type === "answer" || m.message_type === "final")
+        .map((m: { role: string; content: string; message_type: string }) => ({
+          role: m.role as "user" | "assistant",
+          content: m.message_type === "final" ? "일기를 수정했어요. 위에서 확인해봐요." : m.content,
+        }));
+      setChatMessages(history);
     });
   }, [id]);
 

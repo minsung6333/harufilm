@@ -293,6 +293,28 @@ async def refine_diary(
     return {"content": refined}
 
 
+@router.get("/{diary_id}/messages")
+async def get_diary_messages(diary_id: str, user=Depends(get_current_user)):
+    conv = (
+        supabase.table("conversations")
+        .select("id")
+        .eq("diary_id", diary_id)
+        .eq("user_id", str(user.id))
+        .single()
+        .execute()
+    )
+    if not conv.data:
+        return []
+    result = (
+        supabase.table("messages")
+        .select("role, content, message_type, created_at")
+        .eq("conversation_id", conv.data["id"])
+        .order("created_at", desc=False)
+        .execute()
+    )
+    return result.data
+
+
 @router.get("/{diary_id}/revisions")
 async def get_revisions(diary_id: str, user=Depends(get_current_user)):
     diary = (

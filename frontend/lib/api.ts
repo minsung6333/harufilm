@@ -109,6 +109,13 @@ export async function deleteDiary(diaryId: string) {
   return res.json();
 }
 
+export async function getDiaryMessages(diaryId: string) {
+  const res = await fetch(`${BASE_URL}/diaries/${diaryId}/messages`, {
+    headers: await getHeaders(),
+  });
+  return res.json();
+}
+
 export async function getRevisions(diaryId: string) {
   const res = await fetch(`${BASE_URL}/diaries/${diaryId}/revisions`, {
     headers: await getHeaders(),

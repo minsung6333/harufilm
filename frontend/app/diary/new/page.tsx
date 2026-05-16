@@ -10,6 +10,7 @@ type Step = "upload" | "memo" | "draft" | "questions" | "done";
 interface Question {
   question: string;
   answer: string;
+  isCustom?: boolean;
 }
 
 const STYLES = [
@@ -43,7 +44,7 @@ function NewDiaryContent() {
   const [loading, setLoading] = useState(false);
   const [loadingMsg, setLoadingMsg] = useState("");
   const [diaryId, setDiaryId] = useState("");
-  const [photos, setPhotos] = useState<{ file: File; preview: string }[]>([]);
+  const [photos, setPhotos] = useState<{ file: File; preview: string; who: string; where: string; what: string }[]>([]);
   const [style, setStyle] = useState("casual");
   const [customStyle, setCustomStyle] = useState("");
   const [memo, setMemo] = useState("");
@@ -59,6 +60,9 @@ function NewDiaryContent() {
     const newPhotos = files.map((file) => ({
       file,
       preview: URL.createObjectURL(file),
+      who: "",
+      where: "",
+      what: "",
     }));
     setPhotos((prev) => [...prev, ...newPhotos].slice(0, 5));
   }
@@ -67,7 +71,8 @@ function NewDiaryContent() {
     setLoading(true);
     setLoadingMsg(skipPhotos ? "일기 준비 중..." : "사진 분석 중...");
     try {
-      const today = dateParam ?? new Date().toISOString().split("T")[0];
+      const d = new Date();
+      const today = dateParam ?? `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
       const resolvedStyle = style === "custom" ? (customStyle.trim() || "casual") : style;
       const diary = await createDiary(today, resolvedStyle);
       if (diary.detail) throw new Error(diary.detail);
@@ -92,7 +97,18 @@ function NewDiaryContent() {
     setLoading(true);
     setLoadingMsg("AI가 일기를 쓰고 있어요...");
     try {
-      const data = await generateDraft(diaryId, memo);
+      const photoMeta = photos
+        .filter((p) => p.who || p.where || p.what)
+        .map((p, i) => {
+          const parts = [];
+          if (p.who) parts.push(`누구와: ${p.who}`);
+          if (p.where) parts.push(`장소: ${p.where}`);
+          if (p.what) parts.push(`내용: ${p.what}`);
+          return `[사진 ${i + 1}] ${parts.join(", ")}`;
+        })
+        .join("\n");
+      const fullMemo = photoMeta ? `${memo}\n\n[사진 정보]\n${photoMeta}` : memo;
+      const data = await generateDraft(diaryId, fullMemo);
       if (!data.draft) throw new Error();
       setDraft(data.draft);
       setStep("draft");
@@ -206,16 +222,37 @@ function NewDiaryContent() {
               onChange={handleFileChange}
             />
             {photos.length > 0 && (
-              <div className="grid grid-cols-3 gap-2">
+              <div className="flex flex-col gap-3">
                 {photos.map((p, i) => (
-                  <div key={i} className="relative">
-                    <img src={p.preview} alt="" className="w-full h-24 object-cover rounded-xl" />
-                    <button
-                      onClick={() => setPhotos((prev) => prev.filter((_, idx) => idx !== i))}
-                      className="absolute top-1 right-1 bg-black/50 text-white rounded-full w-5 h-5 text-xs flex items-center justify-center"
-                    >
-                      ×
-                    </button>
+                  <div key={i} className="flex gap-3 bg-stone-50 rounded-xl p-3">
+                    <div className="relative shrink-0">
+                      <img src={p.preview} alt="" className="w-20 h-20 object-cover rounded-lg" />
+                      <button
+                        onClick={() => setPhotos((prev) => prev.filter((_, idx) => idx !== i))}
+                        className="absolute -top-1 -right-1 bg-black/50 text-white rounded-full w-5 h-5 text-xs flex items-center justify-center"
+                      >
+                        ×
+                      </button>
+                    </div>
+                    <div className="flex flex-col gap-1.5 flex-1 min-w-0">
+                      {[
+                        { key: "who", placeholder: "누구와 함께?" },
+                        { key: "where", placeholder: "어디서?" },
+                        { key: "what", placeholder: "무엇을 했나요?" },
+                      ].map(({ key, placeholder }) => (
+                        <input
+                          key={key}
+                          value={p[key as "who" | "where" | "what"]}
+                          onChange={(e) => {
+                            const updated = [...photos];
+                            updated[i] = { ...updated[i], [key]: e.target.value };
+                            setPhotos(updated);
+                          }}
+                          placeholder={placeholder}
+                          className="w-full border border-stone-200 rounded-lg px-3 py-1.5 text-xs outline-none focus:border-stone-400 bg-white"
+                        />
+                      ))}
+                    </div>
                   </div>
                 ))}
               </div>
@@ -279,7 +316,20 @@ function NewDiaryContent() {
           <p className="text-sm text-stone-500 font-medium">조금 더 이야기해줘요</p>
           {questions.map((q, i) => (
             <div key={i} className="flex flex-col gap-2">
-              <p className="text-sm font-medium text-stone-700">{q.question}</p>
+              {q.isCustom ? (
+                <input
+                  value={q.question}
+                  onChange={(e) => {
+                    const updated = [...questions];
+                    updated[i].question = e.target.value;
+                    setQuestions(updated);
+                  }}
+                  placeholder="질문을 직접 입력해줘요"
+                  className="border border-stone-300 rounded-xl px-4 py-2 text-sm font-medium outline-none focus:border-stone-500"
+                />
+              ) : (
+                <p className="text-sm font-medium text-stone-700">{q.question}</p>
+              )}
               <textarea
                 value={q.answer}
                 onChange={(e) => {
@@ -290,11 +340,25 @@ function NewDiaryContent() {
                 placeholder="답변을 입력해줘요"
                 className="border border-stone-200 rounded-xl px-4 py-3 text-sm outline-none focus:border-stone-400 resize-none h-20"
               />
+              {q.isCustom && (
+                <button
+                  onClick={() => setQuestions((prev) => prev.filter((_, idx) => idx !== i))}
+                  className="text-xs text-stone-400 text-right"
+                >
+                  삭제
+                </button>
+              )}
             </div>
           ))}
           <button
+            onClick={() => setQuestions((prev) => [...prev, { question: "", answer: "", isCustom: true }])}
+            className="border border-dashed border-stone-300 rounded-xl py-2 text-sm text-stone-400 hover:border-stone-400 transition-colors"
+          >
+            + 질문 직접 추가하기
+          </button>
+          <button
             onClick={handleFinalize}
-            disabled={questions.some((q) => !q.answer.trim())}
+            disabled={questions.some((q) => !q.answer.trim()) || questions.some((q) => q.isCustom && !q.question.trim())}
             className="bg-stone-800 text-white rounded-xl py-3 text-sm font-medium disabled:opacity-40"
           >
             일기 완성하기
