@@ -45,7 +45,7 @@ function NewDiaryContent() {
   const [loading, setLoading] = useState(false);
   const [loadingMsg, setLoadingMsg] = useState("");
   const [diaryId, setDiaryId] = useState(resumeId ?? "");
-  const [photos, setPhotos] = useState<{ file: File; preview: string; who: string; where: string; what: string }[]>([]);
+  const [photos, setPhotos] = useState<{ file: File; preview: string }[]>([]);
   const [style, setStyle] = useState("casual");
   const [customStyle, setCustomStyle] = useState("");
   const [memo, setMemo] = useState("");
@@ -62,9 +62,6 @@ function NewDiaryContent() {
     const newPhotos = files.map((file) => ({
       file,
       preview: URL.createObjectURL(file),
-      who: "",
-      where: "",
-      what: "",
     }));
     setPhotos((prev) => [...prev, ...newPhotos].slice(0, 5));
   }
@@ -230,37 +227,16 @@ function NewDiaryContent() {
               onChange={handleFileChange}
             />
             {photos.length > 0 && (
-              <div className="flex flex-col gap-3">
+              <div className="grid grid-cols-3 gap-2">
                 {photos.map((p, i) => (
-                  <div key={i} className="flex gap-3 bg-stone-50 rounded-xl p-3">
-                    <div className="relative shrink-0">
-                      <img src={p.preview} alt="" className="w-20 h-20 object-cover rounded-lg" />
-                      <button
-                        onClick={() => setPhotos((prev) => prev.filter((_, idx) => idx !== i))}
-                        className="absolute -top-1 -right-1 bg-black/50 text-white rounded-full w-5 h-5 text-xs flex items-center justify-center"
-                      >
-                        ×
-                      </button>
-                    </div>
-                    <div className="flex flex-col gap-1.5 flex-1 min-w-0">
-                      {[
-                        { key: "who", placeholder: "누구와 함께?" },
-                        { key: "where", placeholder: "어디서?" },
-                        { key: "what", placeholder: "무엇을 했나요?" },
-                      ].map(({ key, placeholder }) => (
-                        <input
-                          key={key}
-                          value={p[key as "who" | "where" | "what"]}
-                          onChange={(e) => {
-                            const updated = [...photos];
-                            updated[i] = { ...updated[i], [key]: e.target.value };
-                            setPhotos(updated);
-                          }}
-                          placeholder={placeholder}
-                          className="w-full border border-stone-200 rounded-lg px-3 py-1.5 text-xs outline-none focus:border-stone-400 bg-white"
-                        />
-                      ))}
-                    </div>
+                  <div key={i} className="relative">
+                    <img src={p.preview} alt="" className="w-full h-24 object-cover rounded-xl" />
+                    <button
+                      onClick={() => setPhotos((prev) => prev.filter((_, idx) => idx !== i))}
+                      className="absolute top-1 right-1 bg-black/50 text-white rounded-full w-5 h-5 text-xs flex items-center justify-center"
+                    >
+                      ×
+                    </button>
                   </div>
                 ))}
               </div>
