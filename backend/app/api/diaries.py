@@ -200,6 +200,13 @@ async def finalize_diary(
         .single()
         .execute()
     )
+    if not conv.data:
+        conv = supabase.table("conversations").insert({
+            "diary_id": diary_id,
+            "user_id": str(user.id),
+        }).execute()
+        conv = supabase.table("conversations").select("id").eq("diary_id", diary_id).single().execute()
+
     if conv.data:
         for item in data.answers:
             supabase.table("messages").insert({

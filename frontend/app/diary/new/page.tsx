@@ -355,12 +355,20 @@ function NewDiaryContent() {
           <div className="bg-white rounded-2xl p-4 text-sm leading-7 text-stone-700 shadow-sm whitespace-pre-line">
             {draft}
           </div>
-          <button
-            onClick={handleGenerateQuestions}
-            className="bg-stone-800 text-white rounded-xl py-3 text-sm font-medium"
-          >
-            기억 더 떠올리기
-          </button>
+          <div className="flex gap-2">
+            <button
+              onClick={handleFinalize}
+              className="flex-1 border border-stone-300 text-stone-600 rounded-xl py-3 text-sm font-medium"
+            >
+              그만하기
+            </button>
+            <button
+              onClick={handleGenerateQuestions}
+              className="flex-1 bg-stone-800 text-white rounded-xl py-3 text-sm font-medium"
+            >
+              기억 더 떠올리기
+            </button>
+          </div>
         </div>
       )}
 
