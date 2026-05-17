@@ -23,7 +23,7 @@ async def get_profile(user=Depends(get_current_user)):
         .maybe_single()
         .execute()
     )
-    if not result.data:
+    if not result or not result.data:
         # 프로필이 없으면 기본값으로 생성
         created = supabase.table("profiles").insert({
             "id": str(user.id),
