@@ -1,23 +1,15 @@
 "use client";
 
-import { useState, useEffect, Suspense } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 
-function ResetPasswordContent() {
+export default function ResetPasswordPage() {
   const router = useRouter();
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [ready, setReady] = useState(false);
-
-  useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => {
-      if (data.session) setReady(true);
-      else router.replace("/login");
-    });
-  }, [router]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -40,13 +32,13 @@ function ResetPasswordContent() {
     }
   }
 
-  if (!ready) return null;
-
   return (
     <div className="flex items-center justify-center min-h-screen px-4">
       <div className="w-full max-w-sm">
-        <h1 className="text-xl font-semibold text-center mb-2">새 비밀번호 설정</h1>
-        <p className="text-stone-500 text-center text-sm mb-8">새로 사용할 비밀번호를 입력해줘요</p>
+        <h1 className="text-2xl font-semibold text-center mb-2">새 비밀번호 설정</h1>
+        <p className="text-stone-500 text-center text-sm mb-8">
+          새로운 비밀번호를 입력해줘요
+        </p>
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           <input
@@ -76,13 +68,5 @@ function ResetPasswordContent() {
         </form>
       </div>
     </div>
-  );
-}
-
-export default function ResetPasswordPage() {
-  return (
-    <Suspense>
-      <ResetPasswordContent />
-    </Suspense>
   );
 }

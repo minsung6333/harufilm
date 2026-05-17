@@ -7,6 +7,7 @@ import { getDiary, refineDiary, getRevisions, restoreRevision, deleteDiary, getD
 import { formatDate } from "@/lib/date";
 import { useSession } from "@/components/AuthProvider";
 import { useToast } from "@/components/Toast";
+import ReactMarkdown from "react-markdown";
 
 interface Diary {
   id: string;
@@ -274,7 +275,9 @@ export default function DiaryDetailPage() {
       ) : (
         <>
           <h1 className="text-xl font-semibold mb-4">{diary.title ?? "제목 없음"}</h1>
-          <p className="text-sm leading-7 text-stone-700 whitespace-pre-line mb-8">{content}</p>
+          <div className="text-sm leading-7 text-stone-700 mb-8 prose prose-sm prose-stone max-w-none">
+            <ReactMarkdown>{content}</ReactMarkdown>
+          </div>
         </>
       )}
 
