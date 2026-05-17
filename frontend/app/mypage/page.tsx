@@ -8,6 +8,7 @@ import { getProfile, updateProfile, listDiaries } from "@/lib/api";
 import { useSession } from "@/components/AuthProvider";
 import ProfileForm from "@/components/ProfileForm";
 import BottomNav from "@/components/BottomNav";
+import { useLoadingTimeout } from "@/hooks/useLoadingTimeout";
 
 const DEFAULT = {
   nickname: "",
@@ -128,11 +129,12 @@ export default function MyPage() {
       .finally(() => setLoading(false));
   }, [session]);
 
-  const { data: diaries = [] } = useSWR<DiaryForStats[]>(
+  const { data: diaries = [], isLoading: diariesLoading } = useSWR<DiaryForStats[]>(
     session ? "diaries" : null,
     listDiaries,
     { revalidateOnFocus: false }
   );
+  useLoadingTimeout(loading || diariesLoading);
 
   async function handleSave() {
     setSaving(true);

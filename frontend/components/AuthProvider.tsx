@@ -14,11 +14,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    const timeout = setTimeout(() => setLoading(false), 30000);
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_, s) => {
       setSession(s);
       setLoading(false);
+      clearTimeout(timeout);
     });
-    return () => subscription.unsubscribe();
+    return () => {
+      subscription.unsubscribe();
+      clearTimeout(timeout);
+    };
   }, []);
 
   return (

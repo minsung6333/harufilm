@@ -7,6 +7,7 @@ import { listDiaries } from "@/lib/api";
 import { formatDate } from "@/lib/date";
 import { useSession } from "@/components/AuthProvider";
 import BottomNav from "@/components/BottomNav";
+import { useLoadingTimeout } from "@/hooks/useLoadingTimeout";
 
 interface Diary {
   id: string;
@@ -26,11 +27,12 @@ export default function CalendarPage() {
     if (!authLoading && !session) router.replace("/login");
   }, [session, authLoading, router]);
 
-  const { data: diaries = [] } = useSWR<Diary[]>(
+  const { data: diaries = [], isLoading } = useSWR<Diary[]>(
     session ? "diaries" : null,
     listDiaries,
     { revalidateOnFocus: false }
   );
+  useLoadingTimeout(isLoading);
 
   const diaryByDate = diaries.reduce<Record<string, Diary>>((acc, d) => {
     acc[d.diary_date] = d;

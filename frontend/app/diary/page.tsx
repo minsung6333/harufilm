@@ -10,6 +10,7 @@ import { useSession } from "@/components/AuthProvider";
 import Link from "next/link";
 import BottomNav from "@/components/BottomNav";
 import Onboarding from "@/components/Onboarding";
+import { useLoadingTimeout } from "@/hooks/useLoadingTimeout";
 
 function ExitConfirmDialog({ onConfirm, onCancel }: { onConfirm: () => void; onCancel: () => void }) {
   return (
@@ -173,6 +174,7 @@ export default function DiaryListPage() {
     listDiaries,
     { revalidateOnFocus: false }
   );
+  useLoadingTimeout(isLoading);
 
   const handleSearch = useCallback(async (q: string) => {
     setQuery(q);
