@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { getDiary, refineDiary, getRevisions, restoreRevision, deleteDiary, getDiaryMessages } from "@/lib/api";
+import { formatDate } from "@/lib/date";
 import { useToast } from "@/components/Toast";
 
 interface Diary {
@@ -117,33 +118,83 @@ export default function DiaryDetailPage() {
     }
   }
 
-  if (loading) return <div className="flex items-center justify-center min-h-screen text-stone-400 text-sm">불러오는 중...</div>;
-  if (!diary) return <div className="flex items-center justify-center min-h-screen text-stone-400 text-sm">일기를 찾을 수 없어요</div>;
+  if (loading) {
+    return (
+      <div className="max-w-md mx-auto px-4 py-8">
+        <div className="animate-pulse flex flex-col gap-4">
+          <div className="h-5 w-16 bg-stone-100 rounded" />
+          <div className="w-full h-64 bg-stone-100 rounded-2xl" />
+          <div className="h-3 w-24 bg-stone-100 rounded" />
+          <div className="h-6 w-48 bg-stone-100 rounded" />
+          <div className="flex flex-col gap-2">
+            <div className="h-3 w-full bg-stone-100 rounded" />
+            <div className="h-3 w-full bg-stone-100 rounded" />
+            <div className="h-3 w-3/4 bg-stone-100 rounded" />
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (!diary) {
+    return (
+      <div className="flex items-center justify-center min-h-screen text-stone-400 text-sm">
+        일기를 찾을 수 없어요
+      </div>
+    );
+  }
+
+  const photoCount = diary.photos?.length ?? 0;
 
   return (
     <div className="max-w-md mx-auto px-4 py-8 pb-0 flex flex-col min-h-screen">
+      {/* 헤더 */}
       <div className="flex items-center justify-between mb-6">
-        <button onClick={() => router.back()} className="text-stone-400 text-sm">← 뒤로</button>
+        <button
+          onClick={() => router.back()}
+          className="flex items-center gap-1 text-stone-400 hover:text-stone-600 transition-colors"
+          aria-label="뒤로가기"
+        >
+          <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+          </svg>
+        </button>
         <button
           onClick={handleDelete}
           disabled={deleting}
-          className="text-red-400 text-sm disabled:opacity-40"
+          className="text-red-400 text-sm disabled:opacity-40 hover:text-red-500 transition-colors"
         >
           삭제
         </button>
       </div>
 
       {/* 사진 */}
-      {diary.photos?.length > 0 && (
-        <div className="grid grid-cols-2 gap-2 mb-5">
-          {diary.photos.map((p, i) => (
-            <img key={i} src={p.image_url} alt="" className="w-full h-36 object-cover rounded-2xl" />
-          ))}
+      {photoCount > 0 && (
+        <div className="mb-5">
+          {photoCount === 1 ? (
+            <img
+              src={diary.photos[0].image_url}
+              alt=""
+              className="w-full h-64 object-cover rounded-2xl"
+            />
+          ) : photoCount === 2 ? (
+            <div className="grid grid-cols-2 gap-2">
+              {diary.photos.map((p, i) => (
+                <img key={i} src={p.image_url} alt="" className="w-full h-48 object-cover rounded-2xl" />
+              ))}
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 gap-2">
+              {diary.photos.slice(0, 4).map((p, i) => (
+                <img key={i} src={p.image_url} alt="" className="w-full h-36 object-cover rounded-2xl" />
+              ))}
+            </div>
+          )}
         </div>
       )}
 
       {/* 일기 본문 */}
-      <p className="text-xs text-stone-400 mb-1">{diary.diary_date}</p>
+      <p className="text-xs text-stone-400 mb-1">{formatDate(diary.diary_date)}</p>
       {mood && <p className="text-xs text-stone-400 mb-3">{mood}</p>}
       <h1 className="text-xl font-semibold mb-4">{diary.title ?? "제목 없음"}</h1>
       <p className="text-sm leading-7 text-stone-700 whitespace-pre-line mb-8">{content}</p>
