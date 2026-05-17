@@ -64,6 +64,8 @@ def generate_draft(photo_captions: list[str], user_memo: str, style: str, profil
                     f"너는 감성적인 일기 작가야. "
                     f"사용자 메모를 바탕으로 {style} 문체의 일기를 써줘. "
                     "일기는 1인칭 시점으로 자연스럽게 작성해줘. "
+                    "마크다운 형식으로 작성해줘. 단락은 줄바꿈으로 구분하고, "
+                    "강조할 부분은 **굵게**, 소제목은 ## 을 사용해줘. "
                     + profile_ctx
                 ),
             },
@@ -141,6 +143,8 @@ def refine_diary(current_content: str, user_request: str, style: str, history: l
                 f"너는 감성적인 일기 작가야. "
                 f"사용자의 요청에 따라 기존 일기를 수정해줘. "
                 f"문체는 {style}체를 유지하고, 전체 흐름을 자연스럽게 다듬어줘. "
+                "content는 마크다운 형식으로 작성해줘. 단락은 줄바꿈으로 구분하고, "
+                "강조할 부분은 **굵게**, 소제목은 ## 을 사용해줘. "
                 "반드시 JSON 형식으로 반환해줘: "
                 '{"content": "수정된 일기 본문", "mood": "한 줄 감정 요약"}'
             ),
@@ -179,6 +183,8 @@ def finalize_diary(draft: str, answers: list[dict], style: str) -> dict:
                 "content": (
                     f"너는 감성적인 일기 작가야. "
                     f"초안과 추가 답변을 바탕으로 {style} 문체의 완성된 일기를 써줘. "
+                    "content는 마크다운 형식으로 작성해줘. 단락은 줄바꿈으로 구분하고, "
+                    "강조할 부분은 **굵게**, 소제목은 ## 을 사용해줘. "
                     "반드시 JSON 형식으로 반환해줘: "
                     '{"title": "...", "content": "...", "mood": "..."}'
                 ),
