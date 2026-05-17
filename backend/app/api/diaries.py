@@ -239,10 +239,10 @@ async def update_content(diary_id: str, data: dict, user=Depends(get_current_use
     )
     if not diary.data:
         raise HTTPException(status_code=404, detail="Diary not found")
-    supabase.table("diary_entries").update({
-        "title": data.get("title"),
-        "content": data.get("content"),
-    }).eq("id", diary_id).execute()
+    update: dict = {"title": data.get("title"), "content": data.get("content")}
+    if "mood" in data:
+        update["mood"] = data.get("mood")
+    supabase.table("diary_entries").update(update).eq("id", diary_id).execute()
     return {"message": "저장됐어요"}
 
 

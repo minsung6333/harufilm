@@ -102,11 +102,20 @@ export async function generateQuestions(diaryId: string) {
   return res.json();
 }
 
-export async function updateDiaryContent(diaryId: string, title: string, content: string) {
+export async function updateDiaryContent(diaryId: string, title: string, content: string, mood?: string) {
   const res = await fetch(`${BASE_URL}/diaries/${diaryId}/content`, {
     method: "PUT",
     headers: await getHeaders(),
-    body: JSON.stringify({ title, content }),
+    body: JSON.stringify({ title, content, ...(mood !== undefined && { mood }) }),
+  });
+  return res.json();
+}
+
+export async function updateDiaryMood(diaryId: string, mood: string) {
+  const res = await fetch(`${BASE_URL}/diaries/${diaryId}/content`, {
+    method: "PUT",
+    headers: await getHeaders(),
+    body: JSON.stringify({ mood }),
   });
   return res.json();
 }

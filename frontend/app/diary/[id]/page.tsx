@@ -3,11 +3,20 @@
 import { useEffect, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import useSWR from "swr";
-import { getDiary, refineDiary, getRevisions, restoreRevision, deleteDiary, getDiaryMessages, updateDiaryContent } from "@/lib/api";
+import { getDiary, refineDiary, getRevisions, restoreRevision, deleteDiary, getDiaryMessages, updateDiaryContent, updateDiaryMood } from "@/lib/api";
 import { formatDate } from "@/lib/date";
 import { useSession } from "@/components/AuthProvider";
 import { useToast } from "@/components/Toast";
 import ReactMarkdown from "react-markdown";
+
+const MOODS = [
+  { label: "행복", emoji: "😊" }, { label: "신남", emoji: "🤩" }, { label: "설렘", emoji: "🥰" },
+  { label: "평온", emoji: "😌" }, { label: "뿌듯함", emoji: "🥹" }, { label: "즐거움", emoji: "😄" },
+  { label: "감사", emoji: "🙏" }, { label: "슬픔", emoji: "😢" }, { label: "우울", emoji: "😞" },
+  { label: "화남", emoji: "😤" }, { label: "불안", emoji: "😰" }, { label: "걱정", emoji: "😟" },
+  { label: "외로움", emoji: "😔" }, { label: "피곤", emoji: "😩" }, { label: "복잡함", emoji: "🤔" },
+];
+const MOOD_EMOJI: Record<string, string> = Object.fromEntries(MOODS.map(({ label, emoji }) => [label, emoji]));
 
 interface Diary {
   id: string;
@@ -81,6 +90,7 @@ export default function DiaryDetailPage() {
 
   const [content, setContent] = useState("");
   const [mood, setMood] = useState("");
+  const [showMoodPicker, setShowMoodPicker] = useState(false);
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
   const [refining, setRefining] = useState(false);
@@ -265,7 +275,40 @@ export default function DiaryDetailPage() {
 
       {/* 본문 */}
       <p className="text-xs text-stone-400 mb-1">{formatDate(diary.diary_date)}</p>
-      {mood && <p className="text-xs text-stone-400 mb-3">{mood}</p>}
+      {mood && (
+        <div className="mb-3">
+          {isOwner && showMoodPicker ? (
+            <div className="bg-stone-50 rounded-2xl p-3">
+              <p className="text-xs text-stone-400 mb-2">오늘의 감정을 선택해줘요</p>
+              <div className="flex flex-wrap gap-2">
+                {MOODS.map(({ label, emoji }) => (
+                  <button
+                    key={label}
+                    onClick={async () => {
+                      setMood(label);
+                      setShowMoodPicker(false);
+                      await updateDiaryMood(id, label);
+                    }}
+                    className={`px-3 py-1.5 rounded-full text-xs transition-colors ${
+                      mood === label ? "bg-stone-800 text-white" : "bg-white text-stone-600 border border-stone-200"
+                    }`}
+                  >
+                    {emoji} {label}
+                  </button>
+                ))}
+              </div>
+              <button onClick={() => setShowMoodPicker(false)} className="text-xs text-stone-400 mt-2">취소</button>
+            </div>
+          ) : (
+            <button
+              onClick={() => isOwner && setShowMoodPicker(true)}
+              className={`text-xs text-stone-500 ${isOwner ? "hover:text-stone-700" : ""}`}
+            >
+              {MOOD_EMOJI[mood] ?? ""} {mood} {isOwner && <span className="text-stone-300 ml-1">· 변경</span>}
+            </button>
+          )}
+        </div>
+      )}
 
       {editing ? (
         <div className="flex flex-col gap-3 mb-8">
