@@ -29,6 +29,13 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       </head>
       <body className="bg-stone-50 text-stone-800 min-h-screen">
         <ToastProvider>{children}</ToastProvider>
+        <script dangerouslySetInnerHTML={{ __html: `
+          if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+              navigator.serviceWorker.register('/sw.js');
+            });
+          }
+        `}} />
       </body>
     </html>
   );
