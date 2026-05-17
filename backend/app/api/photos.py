@@ -5,17 +5,15 @@ from app.services import llm, storage
 
 router = APIRouter()
 
-ALLOWED_CONTENT_TYPES = {"image/jpeg", "image/png", "image/webp", "image/heic"}
-
-
 @router.post("/{diary_id}/photos")
 async def upload_photo(
     diary_id: str,
     file: UploadFile = File(...),
     user=Depends(get_current_user),
 ):
-    if file.content_type not in ALLOWED_CONTENT_TYPES:
-        raise HTTPException(status_code=400, detail="JPG, PNG, WEBP 이미지만 업로드 가능합니다")
+    content_type = (file.content_type or "").lower()
+    if not content_type.startswith("image/"):
+        raise HTTPException(status_code=400, detail="이미지 파일만 업로드 가능합니다")
 
     diary = (
         supabase.table("diary_entries")
