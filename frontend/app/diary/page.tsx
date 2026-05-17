@@ -11,6 +11,34 @@ import Link from "next/link";
 import BottomNav from "@/components/BottomNav";
 import Onboarding from "@/components/Onboarding";
 
+function ExitConfirmDialog({ onConfirm, onCancel }: { onConfirm: () => void; onCancel: () => void }) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-end justify-center px-4 pb-8">
+      <div className="absolute inset-0 bg-black/40" onClick={onCancel} />
+      <div className="relative w-full max-w-sm bg-white rounded-2xl overflow-hidden shadow-xl">
+        <div className="px-6 py-5 text-center">
+          <p className="font-medium text-stone-800 mb-1">앱을 종료할까요?</p>
+          <p className="text-sm text-stone-400">하루필름을 닫아요</p>
+        </div>
+        <div className="flex border-t border-stone-100">
+          <button
+            onClick={onCancel}
+            className="flex-1 py-4 text-sm text-stone-500 font-medium border-r border-stone-100"
+          >
+            취소
+          </button>
+          <button
+            onClick={onConfirm}
+            className="flex-1 py-4 text-sm text-stone-800 font-semibold"
+          >
+            종료
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 interface Diary {
   id: string;
   title: string | null;
@@ -104,11 +132,22 @@ export default function DiaryListPage() {
   const [searchResults, setSearchResults] = useState<Diary[]>([]);
   const [viewMode, setViewMode] = useState<"list" | "grid">("list");
   const [notice, setNotice] = useState<Notice | null>(null);
+  const [showExitConfirm, setShowExitConfirm] = useState(false);
 
   // auth 체크
   useEffect(() => {
     if (!authLoading && !session) router.replace("/login");
   }, [session, authLoading, router]);
+
+  // Android 뒤로가기 가로채기
+  useEffect(() => {
+    window.history.pushState({ exitGuard: true }, "");
+    function handlePopState() {
+      setShowExitConfirm(true);
+    }
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
+  }, []);
 
   // 온보딩 & 공지
   useEffect(() => {
@@ -161,6 +200,15 @@ export default function DiaryListPage() {
 
   return (
     <div className="max-w-md mx-auto px-4 py-8 pb-24">
+      {showExitConfirm && (
+        <ExitConfirmDialog
+          onConfirm={() => window.history.go(-2)}
+          onCancel={() => {
+            window.history.pushState({ exitGuard: true }, "");
+            setShowExitConfirm(false);
+          }}
+        />
+      )}
       {showOnboarding && <Onboarding onDone={() => setShowOnboarding(false)} />}
 
       {/* 헤더 */}
