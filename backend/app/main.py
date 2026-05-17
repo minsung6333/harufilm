@@ -25,3 +25,8 @@ app.include_router(profile.router, prefix="/profile", tags=["profile"])
 @app.get("/")
 def root():
     return {"status": "ok", "service": "하루필름 API"}
+
+
+@app.get("/ping")
+def ping():
+    return {"pong": True}
