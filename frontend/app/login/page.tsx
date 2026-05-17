@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase";
@@ -10,7 +10,14 @@ export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data }) => {
+      if (data.session) router.replace("/diary");
+      else setLoading(false);
+    });
+  }, [router]);
 
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault();
@@ -19,11 +26,13 @@ export default function LoginPage() {
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) {
       setError("이메일 또는 비밀번호를 확인해주세요");
+      setLoading(false);
     } else {
       router.replace("/diary");
     }
-    setLoading(false);
   }
+
+  if (loading) return null;
 
   return (
     <div className="flex items-center justify-center min-h-screen px-4">
@@ -49,6 +58,13 @@ export default function LoginPage() {
             required
           />
           {error && <p className="text-red-500 text-sm text-center">{error}</p>}
+
+          <div className="flex justify-end">
+            <Link href="/forgot-password" className="text-xs text-stone-400 hover:text-stone-600">
+              비밀번호를 잊으셨나요?
+            </Link>
+          </div>
+
           <button
             type="submit"
             disabled={loading}
