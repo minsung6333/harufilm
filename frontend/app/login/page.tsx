@@ -1,23 +1,22 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase";
+import { useSession } from "@/components/AuthProvider";
 
 export default function LoginPage() {
   const router = useRouter();
+  const { session, loading: authLoading } = useSession();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => {
-      if (data.session) router.replace("/diary");
-      else setLoading(false);
-    });
-  }, [router]);
+    if (!authLoading && session) router.replace("/diary");
+  }, [session, authLoading, router]);
 
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault();
@@ -32,7 +31,7 @@ export default function LoginPage() {
     }
   }
 
-  if (loading) return null;
+  if (authLoading) return null;
 
   return (
     <div className="flex items-center justify-center min-h-screen px-4">

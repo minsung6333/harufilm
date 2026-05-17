@@ -2,9 +2,10 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { supabase } from "@/lib/supabase";
+import useSWR from "swr";
 import { listDiaries } from "@/lib/api";
 import { formatDate } from "@/lib/date";
+import { useSession } from "@/components/AuthProvider";
 import BottomNav from "@/components/BottomNav";
 
 interface Diary {
@@ -16,17 +17,20 @@ interface Diary {
 
 export default function CalendarPage() {
   const router = useRouter();
+  const { session, loading: authLoading } = useSession();
   const [today] = useState(new Date());
   const [current, setCurrent] = useState(new Date(today.getFullYear(), today.getMonth(), 1));
-  const [diaries, setDiaries] = useState<Diary[]>([]);
   const [selected, setSelected] = useState<string | null>(null);
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => {
-      if (!data.session) router.replace("/login");
-    });
-    listDiaries().then(setDiaries);
-  }, [router]);
+    if (!authLoading && !session) router.replace("/login");
+  }, [session, authLoading, router]);
+
+  const { data: diaries = [] } = useSWR(
+    session ? "diaries" : null,
+    listDiaries,
+    { revalidateOnFocus: false }
+  );
 
   const diaryByDate = diaries.reduce<Record<string, Diary>>((acc, d) => {
     acc[d.diary_date] = d;
