@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { listDiaries, searchDiaries } from "@/lib/api";
+import { formatDate } from "@/lib/date";
 import Link from "next/link";
 import BottomNav from "@/components/BottomNav";
 import Onboarding from "@/components/Onboarding";
@@ -15,6 +16,40 @@ interface Diary {
   mood: string | null;
   status: string;
   photos: { image_url: string }[];
+}
+
+function DiaryCardSkeleton() {
+  return (
+    <div className="bg-white rounded-2xl overflow-hidden shadow-sm animate-pulse">
+      <div className="w-full h-40 bg-stone-100" />
+      <div className="p-4 flex flex-col gap-2">
+        <div className="h-3 w-24 bg-stone-100 rounded" />
+        <div className="h-4 w-40 bg-stone-100 rounded" />
+      </div>
+    </div>
+  );
+}
+
+function EmptyState({ searching, query }: { searching: boolean; query: string }) {
+  if (searching) {
+    return (
+      <div className="flex flex-col items-center gap-3 mt-20 text-center">
+        <div className="text-4xl">🔍</div>
+        <p className="text-stone-500 text-sm">&ldquo;{query}&rdquo;에 대한 결과가 없어요</p>
+      </div>
+    );
+  }
+  return (
+    <div className="flex flex-col items-center gap-4 mt-20 text-center">
+      <div className="text-5xl">📷</div>
+      <div>
+        <p className="text-stone-700 font-medium text-sm mb-1">아직 기록이 없어요</p>
+        <p className="text-stone-400 text-xs leading-5">
+          오늘의 사진을 올려서<br />첫 번째 하루필름을 만들어봐요
+        </p>
+      </div>
+    </div>
+  );
 }
 
 export default function DiaryListPage() {
@@ -49,8 +84,6 @@ export default function DiaryListPage() {
     const results = await searchDiaries(q);
     setDiaries(Array.isArray(results) ? results : []);
   }, []);
-
-  const displayed = diaries;
 
   return (
     <div className="max-w-md mx-auto px-4 py-8 pb-24">
@@ -96,34 +129,50 @@ export default function DiaryListPage() {
       )}
 
       {loading ? (
-        <p className="text-center text-stone-400 text-sm">불러오는 중...</p>
-      ) : displayed.length === 0 ? (
-        <p className="text-center text-stone-400 text-sm mt-16">
-          {searching ? `"${query}"에 대한 결과가 없어요` : "아직 기록이 없어요"}
-        </p>
+        <div className="flex flex-col gap-3">
+          <DiaryCardSkeleton />
+          <DiaryCardSkeleton />
+          <DiaryCardSkeleton />
+        </div>
+      ) : diaries.length === 0 ? (
+        <EmptyState searching={searching} query={query} />
       ) : (
         <div className="flex flex-col gap-3">
           {searching && (
-            <p className="text-xs text-stone-400 mb-1">{displayed.length}개의 일기를 찾았어요</p>
+            <p className="text-xs text-stone-400 mb-1">{diaries.length}개의 일기를 찾았어요</p>
           )}
-          {displayed.map((diary) => {
+          {diaries.map((diary) => {
             const isComplete = diary.status === "completed";
+            const singlePhoto = diary.photos?.length === 1;
             return (
               <Link
                 key={diary.id}
                 href={isComplete ? `/diary/${diary.id}` : `/diary/new?resumeId=${diary.id}`}
               >
                 <div className="bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-shadow">
-                  {diary.photos?.[0] && (
-                    <img
-                      src={diary.photos[0].image_url}
-                      alt=""
-                      className="w-full h-40 object-cover"
-                    />
+                  {diary.photos?.length > 0 && (
+                    singlePhoto ? (
+                      <img
+                        src={diary.photos[0].image_url}
+                        alt=""
+                        className="w-full h-48 object-cover"
+                      />
+                    ) : (
+                      <div className="grid grid-cols-2">
+                        {diary.photos.slice(0, 2).map((p, i) => (
+                          <img
+                            key={i}
+                            src={p.image_url}
+                            alt=""
+                            className="w-full h-40 object-cover"
+                          />
+                        ))}
+                      </div>
+                    )
                   )}
                   <div className="p-4">
                     <div className="flex items-center justify-between mb-1">
-                      <p className="text-xs text-stone-400">{diary.diary_date}</p>
+                      <p className="text-xs text-stone-400">{formatDate(diary.diary_date)}</p>
                       {!isComplete && (
                         <span className="text-xs bg-amber-100 text-amber-600 px-2 py-0.5 rounded-full">
                           이어 작성
