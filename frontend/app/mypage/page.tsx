@@ -45,6 +45,12 @@ function calcStreak(dates: string[]): number {
   return streak;
 }
 
+const MOOD_EMOJI: Record<string, string> = {
+  행복: "😊", 신남: "🤩", 설렘: "🥰", 평온: "😌", 뿌듯함: "🥹",
+  즐거움: "😄", 감사: "🙏", 슬픔: "😢", 우울: "😞", 화남: "😤",
+  불안: "😰", 걱정: "😟", 외로움: "😔", 피곤: "😩", 복잡함: "🤔",
+};
+
 function StatsSection({ diaries }: { diaries: DiaryForStats[] }) {
   const completed = diaries.filter((d) => d.status === "completed");
   const streak = calcStreak(completed.map((d) => d.diary_date));
@@ -86,7 +92,7 @@ function StatsSection({ diaries }: { diaries: DiaryForStats[] }) {
           <p className="text-xs text-stone-400">자주 느낀 감정</p>
           {topMoods.map(([mood, count]) => (
             <div key={mood} className="flex items-center gap-2">
-              <p className="text-xs text-stone-600 w-28 truncate">{mood}</p>
+              <p className="text-xs text-stone-600 w-28 truncate">{MOOD_EMOJI[mood] ?? ""} {mood}</p>
               <div className="flex-1 bg-stone-100 rounded-full h-1.5 overflow-hidden">
                 <div
                   className="bg-stone-500 h-full rounded-full transition-all"
