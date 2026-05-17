@@ -9,6 +9,25 @@ import Link from "next/link";
 import BottomNav from "@/components/BottomNav";
 import Onboarding from "@/components/Onboarding";
 
+interface Notice {
+  id: string;
+  title: string;
+  body: string | null;
+}
+
+function NoticeBanner({ notice, onDismiss }: { notice: Notice; onDismiss: () => void }) {
+  return (
+    <div className="bg-stone-800 text-white rounded-2xl px-4 py-3 mb-4 flex items-start gap-3">
+      <span className="text-base mt-0.5">📢</span>
+      <div className="flex-1 min-w-0">
+        <p className="text-sm font-medium">{notice.title}</p>
+        {notice.body && <p className="text-xs text-stone-300 mt-0.5 leading-5">{notice.body}</p>}
+      </div>
+      <button onClick={onDismiss} className="text-stone-400 hover:text-white text-xl leading-none shrink-0 mt-0.5">×</button>
+    </div>
+  );
+}
+
 interface Diary {
   id: string;
   title: string | null;
@@ -82,6 +101,7 @@ export default function DiaryListPage() {
   const [query, setQuery] = useState("");
   const [searching, setSearching] = useState(false);
   const [viewMode, setViewMode] = useState<"list" | "grid">("list");
+  const [notice, setNotice] = useState<Notice | null>(null);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
@@ -94,7 +114,26 @@ export default function DiaryListPage() {
       setDiaries(data);
       setLoading(false);
     });
+    supabase
+      .from("notices")
+      .select("id, title, body")
+      .eq("is_active", true)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .single()
+      .then(({ data }) => {
+        if (!data) return;
+        const dismissed = JSON.parse(localStorage.getItem("harufilm_dismissed_notices") ?? "[]");
+        if (!dismissed.includes(data.id)) setNotice(data);
+      });
   }, [router]);
+
+  function dismissNotice() {
+    if (!notice) return;
+    const dismissed = JSON.parse(localStorage.getItem("harufilm_dismissed_notices") ?? "[]");
+    localStorage.setItem("harufilm_dismissed_notices", JSON.stringify([...dismissed, notice.id]));
+    setNotice(null);
+  }
 
   const handleSearch = useCallback(async (q: string) => {
     setQuery(q);
@@ -152,6 +191,9 @@ export default function DiaryListPage() {
           </button>
         </div>
       </div>
+
+      {/* 공지 배너 */}
+      {notice && <NoticeBanner notice={notice} onDismiss={dismissNotice} />}
 
       {/* 검색창 */}
       <div className="relative mb-4">
