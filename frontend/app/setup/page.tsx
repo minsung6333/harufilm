@@ -1,8 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { updateProfile } from "@/lib/api";
+import { useSession } from "@/components/AuthProvider";
 import ProfileForm from "@/components/ProfileForm";
 
 const DEFAULT = {
@@ -14,14 +15,21 @@ const DEFAULT = {
 
 export default function SetupPage() {
   const router = useRouter();
+  const { session, loading } = useSession();
   const [data, setData] = useState(DEFAULT);
-  const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (!loading && !session) router.replace("/login");
+  }, [session, loading, router]);
 
   async function handleSubmit() {
-    setLoading(true);
+    setSaving(true);
     await updateProfile(data);
     router.replace("/diary");
   }
+
+  if (loading || !session) return null;
 
   return (
     <div className="max-w-md mx-auto px-4 py-10">
@@ -35,10 +43,10 @@ export default function SetupPage() {
       <div className="mt-8 flex flex-col gap-3">
         <button
           onClick={handleSubmit}
-          disabled={loading}
+          disabled={saving}
           className="w-full bg-stone-800 text-white rounded-xl py-3 text-sm font-medium disabled:opacity-50"
         >
-          {loading ? "저장 중..." : "시작하기"}
+          {saving ? "저장 중..." : "시작하기"}
         </button>
         <button
           onClick={() => router.replace("/diary")}
