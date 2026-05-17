@@ -103,7 +103,7 @@ async def generate_draft(
     photos = diary.data.get("photos", [])
     captions = [p["ai_caption"] for p in photos if p.get("ai_caption")]
 
-    profile = supabase.table("profiles").select("*").eq("id", str(user.id)).single().execute()
+    profile = supabase.table("profiles").select("*").eq("id", str(user.id)).maybe_single().execute()
     draft = llm.generate_draft(captions, data.memo, diary.data["style"], profile.data)
 
     supabase.table("diary_entries").update({
