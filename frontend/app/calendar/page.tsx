@@ -26,7 +26,7 @@ export default function CalendarPage() {
     if (!authLoading && !session) router.replace("/login");
   }, [session, authLoading, router]);
 
-  const { data: diaries = [] } = useSWR(
+  const { data: diaries = [] } = useSWR<Diary[]>(
     session ? "diaries" : null,
     listDiaries,
     { revalidateOnFocus: false }
