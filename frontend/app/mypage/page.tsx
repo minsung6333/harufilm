@@ -2,8 +2,10 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import useSWR from "swr";
 import { supabase } from "@/lib/supabase";
 import { getProfile, updateProfile, listDiaries } from "@/lib/api";
+import { useSession } from "@/components/AuthProvider";
 import ProfileForm from "@/components/ProfileForm";
 import BottomNav from "@/components/BottomNav";
 
@@ -101,16 +103,18 @@ function StatsSection({ diaries }: { diaries: DiaryForStats[] }) {
 
 export default function MyPage() {
   const router = useRouter();
+  const { session, loading: authLoading } = useSession();
   const [data, setData] = useState(DEFAULT);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
-  const [diaries, setDiaries] = useState<DiaryForStats[]>([]);
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: s }) => {
-      if (!s.session) router.replace("/login");
-    });
+    if (!authLoading && !session) router.replace("/login");
+  }, [session, authLoading, router]);
+
+  useEffect(() => {
+    if (!session) return;
     getProfile().then((profile) => {
       setData({
         nickname: profile.nickname ?? "",
@@ -120,10 +124,13 @@ export default function MyPage() {
       });
       setLoading(false);
     });
-    listDiaries().then((data) => {
-      if (Array.isArray(data)) setDiaries(data);
-    });
-  }, [router]);
+  }, [session]);
+
+  const { data: diaries = [] } = useSWR<DiaryForStats[]>(
+    session ? "diaries" : null,
+    listDiaries,
+    { revalidateOnFocus: false }
+  );
 
   async function handleSave() {
     setSaving(true);
