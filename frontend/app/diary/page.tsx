@@ -18,6 +18,28 @@ interface Diary {
   photos: { image_url: string }[];
 }
 
+function calcStreak(dates: string[]): number {
+  if (!dates.length) return 0;
+  const today = new Date();
+  const pad = (n: number) => String(n).padStart(2, "0");
+  const todayStr = `${today.getFullYear()}-${pad(today.getMonth() + 1)}-${pad(today.getDate())}`;
+  const dateSet = new Set(dates);
+  let streak = 0;
+  const cur = new Date(today);
+  while (true) {
+    const s = `${cur.getFullYear()}-${pad(cur.getMonth() + 1)}-${pad(cur.getDate())}`;
+    if (dateSet.has(s)) {
+      streak++;
+      cur.setDate(cur.getDate() - 1);
+    } else if (s === todayStr) {
+      break;
+    } else {
+      break;
+    }
+  }
+  return streak;
+}
+
 function DiaryCardSkeleton() {
   return (
     <div className="bg-white rounded-2xl overflow-hidden shadow-sm animate-pulse">
@@ -59,6 +81,7 @@ export default function DiaryListPage() {
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [query, setQuery] = useState("");
   const [searching, setSearching] = useState(false);
+  const [viewMode, setViewMode] = useState<"list" | "grid">("list");
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
@@ -85,21 +108,54 @@ export default function DiaryListPage() {
     setDiaries(Array.isArray(results) ? results : []);
   }, []);
 
+  const completedDates = diaries
+    .filter((d) => d.status === "completed")
+    .map((d) => d.diary_date);
+  const streak = calcStreak(completedDates);
+
   return (
     <div className="max-w-md mx-auto px-4 py-8 pb-24">
       {showOnboarding && <Onboarding onDone={() => setShowOnboarding(false)} />}
 
+      {/* 헤더 */}
       <div className="flex items-center justify-between mb-4">
-        <h1 className="text-xl font-semibold">하루필름</h1>
+        <div className="flex items-center gap-2">
+          <h1 className="text-xl font-semibold">하루필름</h1>
+          {streak > 0 && (
+            <span className="flex items-center gap-1 bg-amber-50 text-amber-600 text-xs font-medium px-2 py-0.5 rounded-full">
+              🔥 {streak}일 연속
+            </span>
+          )}
+        </div>
+        {/* 뷰 모드 토글 */}
+        <div className="flex items-center gap-1 bg-stone-100 rounded-lg p-0.5">
+          <button
+            onClick={() => setViewMode("list")}
+            className={`p-1.5 rounded-md transition-colors ${viewMode === "list" ? "bg-white shadow-sm text-stone-700" : "text-stone-400"}`}
+            aria-label="리스트 보기"
+          >
+            <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 10h16M4 14h10" />
+            </svg>
+          </button>
+          <button
+            onClick={() => setViewMode("grid")}
+            className={`p-1.5 rounded-md transition-colors ${viewMode === "grid" ? "bg-white shadow-sm text-stone-700" : "text-stone-400"}`}
+            aria-label="갤러리 보기"
+          >
+            <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <rect x="3" y="3" width="7" height="7" rx="1" />
+              <rect x="14" y="3" width="7" height="7" rx="1" />
+              <rect x="3" y="14" width="7" height="7" rx="1" />
+              <rect x="14" y="14" width="7" height="7" rx="1" />
+            </svg>
+          </button>
+        </div>
       </div>
 
       {/* 검색창 */}
       <div className="relative mb-4">
-        <svg
-          className="absolute left-3 top-1/2 -translate-y-1/2 text-stone-400"
-          width="16" height="16" fill="none" viewBox="0 0 24 24"
-          stroke="currentColor" strokeWidth={2}
-        >
+        <svg className="absolute left-3 top-1/2 -translate-y-1/2 text-stone-400" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
           <circle cx="11" cy="11" r="8" />
           <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-4.35-4.35" />
         </svg>
@@ -110,12 +166,7 @@ export default function DiaryListPage() {
           className="w-full pl-9 pr-4 py-2.5 border border-stone-200 rounded-xl text-sm outline-none focus:border-stone-400 bg-white"
         />
         {query && (
-          <button
-            onClick={() => handleSearch("")}
-            className="absolute right-3 top-1/2 -translate-y-1/2 text-stone-400 text-lg leading-none"
-          >
-            ×
-          </button>
+          <button onClick={() => handleSearch("")} className="absolute right-3 top-1/2 -translate-y-1/2 text-stone-400 text-lg leading-none">×</button>
         )}
       </div>
 
@@ -136,11 +187,39 @@ export default function DiaryListPage() {
         </div>
       ) : diaries.length === 0 ? (
         <EmptyState searching={searching} query={query} />
+      ) : viewMode === "grid" ? (
+        /* 갤러리 그리드 뷰 */
+        <div>
+          {searching && <p className="text-xs text-stone-400 mb-2">{diaries.length}개의 일기를 찾았어요</p>}
+          <div className="grid grid-cols-3 gap-1">
+            {diaries.map((diary) => {
+              const isComplete = diary.status === "completed";
+              const thumb = diary.photos?.[0]?.image_url;
+              return (
+                <Link
+                  key={diary.id}
+                  href={isComplete ? `/diary/${diary.id}` : `/diary/new?resumeId=${diary.id}`}
+                  className="relative aspect-square"
+                >
+                  {thumb ? (
+                    <img src={thumb} alt="" className="w-full h-full object-cover rounded-lg" />
+                  ) : (
+                    <div className="w-full h-full bg-stone-100 rounded-lg flex items-center justify-center text-stone-400 text-xs text-center px-1">
+                      {diary.title ?? "제목 없음"}
+                    </div>
+                  )}
+                  {!isComplete && (
+                    <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-amber-400" />
+                  )}
+                </Link>
+              );
+            })}
+          </div>
+        </div>
       ) : (
+        /* 리스트 뷰 */
         <div className="flex flex-col gap-3">
-          {searching && (
-            <p className="text-xs text-stone-400 mb-1">{diaries.length}개의 일기를 찾았어요</p>
-          )}
+          {searching && <p className="text-xs text-stone-400 mb-1">{diaries.length}개의 일기를 찾았어요</p>}
           {diaries.map((diary) => {
             const isComplete = diary.status === "completed";
             const singlePhoto = diary.photos?.length === 1;
@@ -152,20 +231,11 @@ export default function DiaryListPage() {
                 <div className="bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-shadow">
                   {diary.photos?.length > 0 && (
                     singlePhoto ? (
-                      <img
-                        src={diary.photos[0].image_url}
-                        alt=""
-                        className="w-full h-48 object-cover"
-                      />
+                      <img src={diary.photos[0].image_url} alt="" className="w-full h-48 object-cover" />
                     ) : (
                       <div className="grid grid-cols-2">
                         {diary.photos.slice(0, 2).map((p, i) => (
-                          <img
-                            key={i}
-                            src={p.image_url}
-                            alt=""
-                            className="w-full h-40 object-cover"
-                          />
+                          <img key={i} src={p.image_url} alt="" className="w-full h-40 object-cover" />
                         ))}
                       </div>
                     )
@@ -174,15 +244,11 @@ export default function DiaryListPage() {
                     <div className="flex items-center justify-between mb-1">
                       <p className="text-xs text-stone-400">{formatDate(diary.diary_date)}</p>
                       {!isComplete && (
-                        <span className="text-xs bg-amber-100 text-amber-600 px-2 py-0.5 rounded-full">
-                          이어 작성
-                        </span>
+                        <span className="text-xs bg-amber-100 text-amber-600 px-2 py-0.5 rounded-full">이어 작성</span>
                       )}
                     </div>
                     <p className="font-medium text-sm">{diary.title ?? "제목 없음"}</p>
-                    {diary.mood && (
-                      <p className="text-xs text-stone-400 mt-1">{diary.mood}</p>
-                    )}
+                    {diary.mood && <p className="text-xs text-stone-400 mt-1">{diary.mood}</p>}
                   </div>
                 </div>
               </Link>
