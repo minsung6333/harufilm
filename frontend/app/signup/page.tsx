@@ -2,9 +2,11 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 
 export default function SignupPage() {
+  const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
@@ -26,7 +28,7 @@ export default function SignupPage() {
     }
 
     setLoading(true);
-    const { error } = await supabase.auth.signUp({
+    const { data, error } = await supabase.auth.signUp({
       email,
       password,
       options: {
@@ -36,6 +38,8 @@ export default function SignupPage() {
     if (error) {
       setError(error.message || "회원가입에 실패했어요. 다시 시도해줘요");
       setLoading(false);
+    } else if (data.session) {
+      router.replace("/setup");
     } else {
       setSent(true);
     }
