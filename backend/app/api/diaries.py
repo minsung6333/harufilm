@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException
 from app.db import supabase
-from app.dependencies import get_current_user
+from app.dependencies import get_current_user, get_optional_user
 from app.models.schemas import DiaryCreate, GenerateDraftRequest, FinalizeRequest, RefineRequest, RestoreRequest, ChatMessage
 from app.services import llm
 
@@ -47,12 +47,11 @@ async def list_diaries(user=Depends(get_current_user)):
 
 
 @router.get("/{diary_id}")
-async def get_diary(diary_id: str, user=Depends(get_current_user)):
+async def get_diary(diary_id: str, user=Depends(get_optional_user)):
     result = (
         supabase.table("diary_entries")
         .select("*, photos(*)")
         .eq("id", diary_id)
-        .eq("user_id", str(user.id))
         .order("display_order", foreign_table="photos")
         .single()
         .execute()
