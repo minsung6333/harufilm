@@ -115,15 +115,17 @@ export default function MyPage() {
 
   useEffect(() => {
     if (!session) return;
-    getProfile().then((profile) => {
-      setData({
-        nickname: profile.nickname ?? "",
-        default_style: profile.default_style ?? "casual",
-        topics: profile.topics ?? [],
-        diary_length: profile.diary_length ?? "medium",
-      });
-      setLoading(false);
-    });
+    getProfile()
+      .then((profile) => {
+        setData({
+          nickname: profile.nickname ?? "",
+          default_style: profile.default_style ?? "casual",
+          topics: profile.topics ?? [],
+          diary_length: profile.diary_length ?? "medium",
+        });
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false));
   }, [session]);
 
   const { data: diaries = [] } = useSWR<DiaryForStats[]>(

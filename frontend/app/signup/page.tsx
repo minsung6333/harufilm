@@ -34,7 +34,7 @@ export default function SignupPage() {
       },
     });
     if (error) {
-      setError("회원가입에 실패했어요. 다시 시도해줘요");
+      setError(error.message || "회원가입에 실패했어요. 다시 시도해줘요");
       setLoading(false);
     } else {
       setSent(true);
