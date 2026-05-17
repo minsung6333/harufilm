@@ -10,6 +10,7 @@ import { useToast } from "@/components/Toast";
 
 interface Diary {
   id: string;
+  user_id: string;
   title: string | null;
   content: string | null;
   draft_content: string | null;
@@ -68,12 +69,14 @@ export default function DiaryDetailPage() {
   const { session, loading: authLoading } = useSession();
   const { showToast } = useToast();
 
-  // SWR로 일기 데이터 캐싱
+  // SWR로 일기 데이터 캐싱 — 비로그인도 조회 가능
   const { data: diary, isLoading } = useSWR<Diary>(
-    session && id ? `diary-${id}` : null,
+    id ? `diary-${id}` : null,
     () => getDiary(id),
     { revalidateOnFocus: false }
   );
+
+  const isOwner = !!session && !!diary && session.user.id === diary.user_id;
 
   const [content, setContent] = useState("");
   const [mood, setMood] = useState("");
@@ -90,9 +93,7 @@ export default function DiaryDetailPage() {
   const [editContent, setEditContent] = useState("");
   const [saving, setSaving] = useState(false);
 
-  useEffect(() => {
-    if (!authLoading && !session) router.replace("/login");
-  }, [session, authLoading, router]);
+  // 비로그인도 읽기 가능 — 로그인 리다이렉트 없음
 
   // diary SWR 데이터로 로컬 상태 초기화
   useEffect(() => {
@@ -105,7 +106,7 @@ export default function DiaryDetailPage() {
   }, [diary]);
 
   useEffect(() => {
-    if (!session || !id) return;
+    if (!isOwner || !id) return;
     getRevisions(id).then((data) => {
       if (Array.isArray(data) && data.length > 0) {
         setRevisions(data);
@@ -125,7 +126,7 @@ export default function DiaryDetailPage() {
           }))
       );
     });
-  }, [session, id]);
+  }, [isOwner, id]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -229,16 +230,16 @@ export default function DiaryDetailPage() {
               <path strokeLinecap="round" strokeLinejoin="round" d="M4 12v8a2 2 0 002 2h12a2 2 0 002-2v-8M16 6l-4-4-4 4M12 2v13" />
             </svg>
           </button>
-          {diary.status === "completed" && !editing && (
+          {isOwner && diary.status === "completed" && !editing && (
             <button onClick={() => { setEditTitle(diary.title ?? ""); setEditContent(content); setEditing(true); }} className="text-stone-400 hover:text-stone-600 transition-colors text-sm">편집</button>
           )}
-          {editing && (
+          {isOwner && editing && (
             <div className="flex gap-2">
               <button onClick={() => setEditing(false)} className="text-stone-400 text-sm">취소</button>
               <button onClick={handleSaveEdit} disabled={saving} className="text-stone-800 font-medium text-sm disabled:opacity-40">{saving ? "저장 중..." : "저장"}</button>
             </div>
           )}
-          {!editing && (
+          {isOwner && !editing && (
             <button onClick={handleDelete} disabled={deleting} className="text-red-400 text-sm disabled:opacity-40 hover:text-red-500 transition-colors">삭제</button>
           )}
         </div>
@@ -277,8 +278,8 @@ export default function DiaryDetailPage() {
         </>
       )}
 
-      {/* 채팅 영역 */}
-      {diary.status === "completed" && !editing && (
+      {/* 채팅 영역 — 소유자만 */}
+      {isOwner && diary.status === "completed" && !editing && (
         <div className="border-t border-stone-100 pt-5 flex flex-col gap-3 pb-6">
           {revisions.length > 1 && (
             <div className="flex gap-2 overflow-x-auto pb-1">

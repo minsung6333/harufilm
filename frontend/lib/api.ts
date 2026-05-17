@@ -56,9 +56,11 @@ export async function listDiaries() {
 }
 
 export async function getDiary(diaryId: string) {
-  const res = await fetch(`${BASE_URL}/diaries/${diaryId}`, {
-    headers: await getHeaders(),
-  });
+  const { data } = await supabase.auth.getSession();
+  const token = data.session?.access_token;
+  const headers: Record<string, string> = { "Content-Type": "application/json" };
+  if (token) headers.Authorization = `Bearer ${token}`;
+  const res = await fetch(`${BASE_URL}/diaries/${diaryId}`, { headers });
   return res.json();
 }
 
