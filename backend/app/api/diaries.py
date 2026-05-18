@@ -242,6 +242,8 @@ async def update_content(diary_id: str, data: dict, user=Depends(get_current_use
     update: dict = {"title": data.get("title"), "content": data.get("content")}
     if "mood" in data:
         update["mood"] = data.get("mood")
+    if "diary_date" in data:
+        update["diary_date"] = data.get("diary_date")
     supabase.table("diary_entries").update(update).eq("id", diary_id).execute()
     return {"message": "저장됐어요"}
 

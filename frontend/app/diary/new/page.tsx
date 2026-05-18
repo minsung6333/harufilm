@@ -4,6 +4,7 @@ import { useState, useRef, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createDiary, uploadPhoto, generateDraft, generatePhotoQuestions, generateQuestions, finalizeDiary, updateDiaryContent } from "@/lib/api";
 import { useToast } from "@/components/Toast";
+import ReactMarkdown from "react-markdown";
 
 type Step = "upload" | "photo_questions" | "memo" | "draft" | "questions" | "done";
 
@@ -464,7 +465,9 @@ function NewDiaryContent() {
             <div className="bg-white rounded-2xl p-5 shadow-sm">
               <p className="text-xs text-stone-400 mb-1">{result.mood}</p>
               <h2 className="text-lg font-semibold mb-3">{editTitle || result.title}</h2>
-              <p className="text-sm leading-7 text-stone-700 whitespace-pre-line">{editContent || result.content}</p>
+              <div className="text-sm leading-7 text-stone-700 prose prose-sm prose-stone max-w-none">
+                <ReactMarkdown>{editContent || result.content}</ReactMarkdown>
+              </div>
             </div>
           ) : (
             <div className="flex flex-col gap-3">

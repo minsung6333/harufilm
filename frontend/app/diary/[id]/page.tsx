@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import useSWR from "swr";
-import { getDiary, refineDiary, getRevisions, restoreRevision, deleteDiary, getDiaryMessages, updateDiaryContent, updateDiaryMood } from "@/lib/api";
+import { getDiary, refineDiary, getRevisions, restoreRevision, deleteDiary, getDiaryMessages, updateDiaryContent, updateDiaryMood, updateDiaryDate } from "@/lib/api";
 import { formatDate } from "@/lib/date";
 import { useSession } from "@/components/AuthProvider";
 import { useToast } from "@/components/Toast";
@@ -91,6 +91,8 @@ export default function DiaryDetailPage() {
   const [content, setContent] = useState("");
   const [mood, setMood] = useState("");
   const [showMoodPicker, setShowMoodPicker] = useState(false);
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [diaryDate, setDiaryDate] = useState("");
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
   const [refining, setRefining] = useState(false);
@@ -112,6 +114,7 @@ export default function DiaryDetailPage() {
     const c = diary.content ?? diary.draft_content ?? "";
     setContent(c);
     setMood(diary.mood ?? "");
+    setDiaryDate(diary.diary_date ?? "");
     setEditTitle(diary.title ?? "");
     setEditContent(c);
   }, [diary]);
@@ -274,7 +277,28 @@ export default function DiaryDetailPage() {
       )}
 
       {/* 본문 */}
-      <p className="text-xs text-stone-400 mb-1">{formatDate(diary.diary_date)}</p>
+      {isOwner && showDatePicker ? (
+        <input
+          type="date"
+          value={diaryDate}
+          onChange={async (e) => {
+            const newDate = e.target.value;
+            setDiaryDate(newDate);
+            setShowDatePicker(false);
+            await updateDiaryDate(id, newDate);
+          }}
+          onBlur={() => setShowDatePicker(false)}
+          autoFocus
+          className="text-xs border border-stone-200 rounded-lg px-2 py-1 mb-1 outline-none focus:border-stone-400"
+        />
+      ) : (
+        <button
+          onClick={() => isOwner && setShowDatePicker(true)}
+          className={`text-xs text-stone-400 mb-1 block ${isOwner ? "hover:text-stone-600" : ""}`}
+        >
+          {formatDate(diaryDate || diary.diary_date)}{isOwner && <span className="text-stone-300 ml-1">· 변경</span>}
+        </button>
+      )}
       {mood && (
         <div className="mb-3">
           {isOwner && showMoodPicker ? (

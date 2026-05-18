@@ -111,6 +111,15 @@ export async function updateDiaryContent(diaryId: string, title: string, content
   return res.json();
 }
 
+export async function updateDiaryDate(diaryId: string, diary_date: string) {
+  const res = await fetch(`${BASE_URL}/diaries/${diaryId}/content`, {
+    method: "PUT",
+    headers: await getHeaders(),
+    body: JSON.stringify({ diary_date }),
+  });
+  return res.json();
+}
+
 export async function updateDiaryMood(diaryId: string, mood: string) {
   const res = await fetch(`${BASE_URL}/diaries/${diaryId}/content`, {
     method: "PUT",
