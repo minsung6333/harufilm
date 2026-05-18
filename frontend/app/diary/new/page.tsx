@@ -82,10 +82,13 @@ function NewDiaryContent() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { showToast } = useToast();
 
+  const today = (() => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`; })();
+
   const [step, setStep] = useState<Step>(resumeId ? "memo" : "upload");
   const [loading, setLoading] = useState(false);
   const [loadingMsg, setLoadingMsg] = useState("");
   const [diaryId, setDiaryId] = useState(resumeId ?? "");
+  const [selectedDate, setSelectedDate] = useState(dateParam ?? today);
   const [photos, setPhotos] = useState<{ file: File; preview: string }[]>([]);
   const [style, setStyle] = useState("casual");
   const [customStyle, setCustomStyle] = useState("");
@@ -113,10 +116,8 @@ function NewDiaryContent() {
     try {
       let currentDiaryId = diaryId;
       if (!currentDiaryId) {
-        const d = new Date();
-        const today = dateParam ?? `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
         const resolvedStyle = style === "custom" ? (customStyle.trim() || "casual") : style;
-        const diary = await createDiary(today, resolvedStyle);
+        const diary = await createDiary(selectedDate, resolvedStyle);
         if (diary.detail) throw new Error(diary.detail);
         currentDiaryId = diary.id;
         setDiaryId(currentDiaryId);
@@ -218,6 +219,18 @@ function NewDiaryContent() {
 
       {!loading && step === "upload" && (
         <div className="flex flex-col gap-5">
+          {/* 날짜 선택 */}
+          <div className="flex flex-col gap-2">
+            <p className="text-sm text-stone-500">날짜를 선택해줘요</p>
+            <input
+              type="date"
+              value={selectedDate}
+              max={today}
+              onChange={(e) => setSelectedDate(e.target.value)}
+              className="border border-stone-200 rounded-xl px-4 py-3 text-sm outline-none focus:border-stone-400"
+            />
+          </div>
+
           {/* 문체 선택 */}
           <div className="flex flex-col gap-2">
             <p className="text-sm text-stone-500">일기 문체를 골라줘요</p>
