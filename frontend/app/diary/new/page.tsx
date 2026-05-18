@@ -376,7 +376,7 @@ function NewDiaryContent() {
           </div>
           <div className="flex gap-2">
             <button
-              onClick={handleFinalize}
+              onClick={() => handleFinalize()}
               className="flex-1 border border-stone-300 text-stone-600 rounded-xl py-3 text-sm font-medium"
             >
               그만하기
@@ -437,7 +437,7 @@ function NewDiaryContent() {
             + 질문 직접 추가하기
           </button>
           <button
-            onClick={handleFinalize}
+            onClick={() => handleFinalize()}
             disabled={questions.some((q) => q.isCustom && !q.question.trim())}
             className="bg-stone-800 text-white rounded-xl py-3 text-sm font-medium disabled:opacity-40"
           >
