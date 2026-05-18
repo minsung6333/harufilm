@@ -186,11 +186,11 @@ function NewDiaryContent() {
     }
   }
 
-  async function handleFinalize() {
+  async function handleFinalize(overrideQuestions?: Question[]) {
     setLoading(true);
     setLoadingMsg("최종 일기를 완성하고 있어요...");
     try {
-      const data = await finalizeDiary(diaryId, questions);
+      const data = await finalizeDiary(diaryId, overrideQuestions ?? questions);
       if (!data.content) throw new Error();
       setResult(data);
       setEditTitle(data.title);
@@ -403,7 +403,7 @@ function NewDiaryContent() {
                   updated[i].answer = e.target.value;
                   setQuestions(updated);
                 }}
-                placeholder="답변을 입력해줘요"
+                placeholder="답변을 입력해줘요 (선택사항)"
                 className="border border-stone-200 rounded-xl px-4 py-3 text-sm outline-none focus:border-stone-400 resize-none h-20"
               />
               {q.isCustom && (
@@ -424,10 +424,16 @@ function NewDiaryContent() {
           </button>
           <button
             onClick={handleFinalize}
-            disabled={questions.some((q) => !q.answer.trim()) || questions.some((q) => q.isCustom && !q.question.trim())}
+            disabled={questions.some((q) => q.isCustom && !q.question.trim())}
             className="bg-stone-800 text-white rounded-xl py-3 text-sm font-medium disabled:opacity-40"
           >
             일기 완성하기
+          </button>
+          <button
+            onClick={() => handleFinalize([])}
+            className="text-stone-400 text-sm text-center underline underline-offset-2"
+          >
+            건너뛰고 바로 완성하기
           </button>
         </div>
       )}
